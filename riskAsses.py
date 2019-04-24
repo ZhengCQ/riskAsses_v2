@@ -4,9 +4,7 @@
 import argparse
 import sys
 import os
-from threading import Thread
 from bin.riskAssesing import *
-
 
 ARGS = argparse.ArgumentParser(description="危害度评估")
 ARGS.add_argument(
@@ -45,22 +43,20 @@ def main():
 	A_samples_lst = args.A_samples.split(',')
 	B_samples_lst = args.B_samples.split(',')
 	C_samples_lst = args.C_samples.split(',')
-
 	#all_sites = int(os.popen("less -S %s |wc -l" % (args.vcf)).read())
 	#all_sites = get_all_sites(args.vcf, args.work_dir)
 	all_sites = int(168773)
 	#min_sites = int(10000)
 	fix_sites = all_sites/2
 	print 'There are %s sites'%(all_sites)
-	outf = open('%s/block_riks.info'%args.work_dir, 'w')
-	work = """
-	"""
-	for i in range(0, 10):
-		B_samples_lst = random.sample(B_samples_lst, 4)
+	#outf = open('%s/block_riks.info'%args.work_dir, 'w')
+	for i in range(0, 1):
+		B_samples_lst = random.sample(B_samples_lst, 5)
 		risk = FuncRisk(args.vcf, args.A_population, args.B_population,
 				A_samples_lst, B_samples_lst, C_samples_lst, fix_sites, all_sites)
-		outf.write("{}\t{}\t{}\t{}\t{}\n".format(i, risk.sites, risk.risk_missense, risk.risk_synonymous, risk.risk_lof))
-	outf.close()
+		print i, risk.sites, risk.risk_missense, risk.risk_synonymous, risk.risk_lof, risk.dn_ds_A, risk.dn_ds_B
+		#outf.write("{}\t{}\t{}\t{}\t{}\n".format(i, risk.sites, risk.risk_missense, risk.risk_synonymous, risk.risk_lof))
+	#outf.close()
 
 if __name__ == '__main__':
 	main()
