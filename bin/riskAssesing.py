@@ -133,12 +133,22 @@ class FuncRisk(object):
 	def _allele_count(self, gtinfo, grp):
 		grp_gt_list = [gtinfo.split('|')[i] for i in self.grp_dict[grp]['index']]
 		mut = 0
+		mut_hom = 0
+		mut_het = 0
+		ref_hom = 0
 		for each in grp_gt_list:
-			for allele in each.split('/'):
-				if int(allele) != 0: # 不等于0则计算，1，2都算
-					mut += 1
+			gt = each.split('/')
+			if gt[0] == '0' and gt[1] == '0':#字符为0,非数字
+				ref_hom += 1
+			elif gt[0] != '0' and gt[1] != '0':
+				mut += 2 #突变数目
+				if gt[0] == gt[1]: mut_hom += 1  #纯合
+			elif gt[0] != '0' or gt[1] != '0':
+				mut += 1
+				mut_het += 1 #杂合突变
 		#print grp_gt_list, mut, len(grp_gt_list)*2,
-		return mut, len(grp_gt_list)*2
+		#print grp_gt_list, mut, mut_hom, mut_het, ref_hom, len(grp_gt_list)*2
+		return mut, mut_hom, mut_het, ref_hom, len(grp_gt_list)*2, grp_gt_list
 
 	def _derived_allele_freq(self, gtinfo, A, B, C): 
 		"""
@@ -150,9 +160,9 @@ class FuncRisk(object):
 		where nAi is the total number of alleles called there in population A 
 		and dAi is the number of derived alleles called
 		"""
-		A_mut, A_allele = self._allele_count(gtinfo, A)
-		B_mut, B_allele = self._allele_count(gtinfo, B)
-		C_mut, C_allele = self._allele_count(gtinfo, C)
+		A_mut, A_mut_hom, A_mut_het, A_ref_hom, A_allele, A_grp_gt_list = self._allele_count(gtinfo, A)
+		B_mut, B_mut_hom, B_mut_het, B_ref_hom, B_allele, B_grp_gt_list = self._allele_count(gtinfo, B)
+		C_mut, C_mut_hom, C_mut_het, C_ref_hom, C_allele, C_grp_gt_list = self._allele_count(gtinfo, C)
 		ni = A_allele
 		di = 0
 		if A_mut > 0 and B_mut == 0 and C_mut == 0: # 这里ref为祖先碱基。B 群体均为ref，C群体均为ref, A群体携带有alt
@@ -161,7 +171,11 @@ class FuncRisk(object):
 			di = A_allele - A_mut #
 		fi = float(di)/float(ni)
 		#print di,ni,
-		return fi
+		if fi < 1 and fi > 0:
+			#print A_grp_gt_list,B_grp_gt_list,C_grp_gt_list,fi,di,ni
+			return fi
+		else:
+			return 0
 
 	def _risk_count(self, freq_dict, category):
 		"""
@@ -170,7 +184,7 @@ class FuncRisk(object):
 		try:
 			L_AB_C = sum(freq_dict['AvsB'][category])/sum(freq_dict['AvsB']['intergenic'])
 			L_BA_C = sum(freq_dict['BvsA'][category])/sum(freq_dict['BvsA']['intergenic'])
-			print category,sum(freq_dict['AvsB'][category]), sum(freq_dict['AvsB']['intergenic']),sum(freq_dict['BvsA'][category]), sum(freq_dict['BvsA']['intergenic'])
+			#print category,sum(freq_dict['AvsB'][category]), sum(freq_dict['AvsB']['intergenic']),sum(freq_dict['BvsA'][category]), sum(freq_dict['BvsA']['intergenic'])
 		except:
 			L_AB_C = 0
 			L_BA_C = 0
@@ -188,7 +202,7 @@ class FuncRisk(object):
 		return start, end
 
 	def dn_ds_count(self, dnds_dict, gtinfo, func, A):
-		A_mut, A_allele = self._allele_count(gtinfo, A)
+		A_mut, A_mut_hom, A_mut_het, A_ref_hom, A_allele, A_grp_gt_list= self._allele_count(gtinfo, A)
 		if A_mut > 0:
 			if func == 'missense_variant':
 				try:
@@ -200,6 +214,12 @@ class FuncRisk(object):
 					dnds_dict[A]['ds'] = dnds_dict[A]['ds'] + 1
 				except:
 					dnds_dict.setdefault(A, {}).setdefault('ds', 1)
+			try:
+				self.func_count_hash[func][A] += 1 #每个功能值初始化为0				
+			except:
+				#for k in rank_score:
+				self.func_count_hash.setdefault(func, {}).setdefault(A, 0) #每个功能值初始化为0
+
 
 	def _freq_count_catalogue(self, freq_dict, gtinfo, func, A, B, C):	
 		def freq_count(category):
@@ -213,7 +233,7 @@ class FuncRisk(object):
 			category：不同类型，如missse, lof, intergenic等
 			"""
 			fA = self._derived_allele_freq(gtinfo, A, B, C)
-			#print 'fA',category,fA
+			#print 'fA',category,fA,
 			fB = self._derived_allele_freq(gtinfo, B, A, C)
 			#print 'fB',category,fB
 			freq_dict.setdefault('AvsB', {}).setdefault(category, []).append(fA*(1 - fB))
@@ -247,8 +267,6 @@ class FuncRisk(object):
 		dnds_dict = {}
 		start, end = self._jackknifes(self.fix_sites, self.all_sites) # block jackknifes on the set of sites
 		#print start, end
-		for k in rank_score:
-			self.func_count_hash.setdefault(k, 0) #每个功能值初始化为0
 		vcfinfo = Read.Readvcf(self.invcf).extract #读取到注释vcf的信息
 		num = 0
 		for each in vcfinfo: #遍历每一行数据
@@ -262,11 +280,13 @@ class FuncRisk(object):
 			#分别计算群体A和群体B的dnds值
 			self.dn_ds_count(dnds_dict, each.gt, high_var.func, self.A)
 			self.dn_ds_count(dnds_dict, each.gt, high_var.func, self.B)
+
 			#self.func_count_hash[high_var.func] += 1 #计算每一个功能
         
         #计算missense, synoymouns及lof的值
 		self.sites = end - start
 
+		print self.func_count_hash
         #群体A和B的dn/ds值
 		self.dn_ds_A = float(dnds_dict[self.A]['dn'])/float(dnds_dict[self.A]['ds'])
 		self.dn_ds_B = float(dnds_dict[self.B]['dn'])/float(dnds_dict[self.B]['ds'])	

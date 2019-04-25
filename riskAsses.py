@@ -47,14 +47,23 @@ def main():
 	#all_sites = get_all_sites(args.vcf, args.work_dir)
 	all_sites = int(168773)
 	#min_sites = int(10000)
-	fix_sites = all_sites/2
+	#fix_sites = all_sites/2
+	fix_sites = int(120000)
 	print 'There are %s sites'%(all_sites)
 	#outf = open('%s/block_riks.info'%args.work_dir, 'w')
 	for i in range(0, 1):
-		B_samples_lst = random.sample(B_samples_lst, 5)
+		#B_samples_lst = random.sample(B_samples_lst, 5) 
 		risk = FuncRisk(args.vcf, args.A_population, args.B_population,
 				A_samples_lst, B_samples_lst, C_samples_lst, fix_sites, all_sites)
-		print i, risk.sites, risk.risk_missense, risk.risk_synonymous, risk.risk_lof, risk.dn_ds_A, risk.dn_ds_B
+		print """
+		刀切次数: {0}
+		刀切位点数: {1}
+		错义突变R值: {2}
+		同义突变R值: {3}
+		LOF突变R值: {4}
+		dn/ds A群体: {5}
+		dn/ds B群体: {6}
+		""".format(i, risk.sites, risk.risk_missense, risk.risk_synonymous, risk.risk_lof, risk.dn_ds_A, risk.dn_ds_B)
 		#outf.write("{}\t{}\t{}\t{}\t{}\n".format(i, risk.sites, risk.risk_missense, risk.risk_synonymous, risk.risk_lof))
 	#outf.close()
 
