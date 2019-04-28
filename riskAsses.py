@@ -5,6 +5,7 @@ import argparse
 import sys
 import os
 from bin.riskAssesing import *
+import datetime
 
 ARGS = argparse.ArgumentParser(description="危害度评估")
 ARGS.add_argument(
@@ -35,6 +36,7 @@ def get_all_sites(vcf, work_dir):
 	#os.system('rm ./vcfstat.log')
 	return int(all_sites)
 
+
 def main():
 	args = ARGS.parse_args()
 	if not args.vcf:
@@ -52,9 +54,11 @@ def main():
 	print 'There are %s sites'%(all_sites)
 	#outf = open('%s/block_riks.info'%args.work_dir, 'w')
 	for i in range(0, 1):
-		#B_samples_lst = random.sample(B_samples_lst, 5) 
+		B_samples_lst = random.sample(B_samples_lst, 5) 
+		print datetime.datetime.now()
 		risk = FuncRisk(args.vcf, args.A_population, args.B_population,
 				A_samples_lst, B_samples_lst, C_samples_lst, fix_sites, all_sites)
+		print datetime.datetime.now()
 		print """
 		刀切次数: {0}
 		刀切位点数: {1}
@@ -63,9 +67,17 @@ def main():
 		LOF突变R值: {4}
 		dn/ds A群体: {5}
 		dn/ds B群体: {6}
-		""".format(i, risk.sites, risk.risk_missense, risk.risk_synonymous, risk.risk_lof, risk.dn_ds_A, risk.dn_ds_B)
+		A群体: {7}
+		B群体: {8}
+		""".format(i, risk.sites, risk.risk_missense, risk.risk_synonymous, \
+			risk.risk_lof, risk.dn_ds_A, risk.dn_ds_B, \
+			','.join(risk.A_samples), ','.join(risk.B_samples))
 		#outf.write("{}\t{}\t{}\t{}\t{}\n".format(i, risk.sites, risk.risk_missense, risk.risk_synonymous, risk.risk_lof))
 	#outf.close()
 
 if __name__ == '__main__':
+	start = datetime.datetime.now()
 	main()
+	end = datetime.datetime.now()
+
+	print end - start
