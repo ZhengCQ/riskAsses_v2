@@ -36,6 +36,15 @@ def get_all_sites(vcf, work_dir):
 	#os.system('rm ./vcfstat.log')
 	return int(all_sites)
 
+def write_table(func_dict, outfile):
+	out_order = ['functionnal','splice_acceptor_variant','downstream_gene_variant',\
+				'synonymous_variant','stop_lost','intergenic_region','splice_region_variant',\
+				'stop_gained','upstream_gene_variant','missense_variant',\
+				'intron_variant','dn_ds','lof_ds','total']
+	outf = open(outfile , 'w')
+
+	for k in func_dict:
+		outf.write(k + '\t' +'\t'.join([ str(i) for i in func_dict[k]]) + '\n')
 
 def main():
 	args = ARGS.parse_args()
@@ -52,28 +61,28 @@ def main():
 	#fix_sites = all_sites/2
 	fix_sites = int(120000)
 	print 'There are %s sites'%(all_sites)
-	#outf = open('%s/block_riks.info'%args.work_dir, 'w')
 	for i in range(0, 1):
 		B_samples_lst = random.sample(B_samples_lst, 5) 
 		print datetime.datetime.now()
-		risk = FuncRisk(args.vcf, args.A_population, args.B_population,
+		funcstat = FuncRisk(args.vcf, args.A_population, args.B_population,
 				A_samples_lst, B_samples_lst, C_samples_lst, fix_sites, all_sites)
+		
+		write_table(funcstat.func_count_dict, args.work_dir + '/func_stat_info.xls')
+		write_table(funcstat.func_di_count_dict, args.work_dir + '/func_derived_info.xls')
+
 		print datetime.datetime.now()
 		print """
 		刀切次数: {0}
 		刀切位点数: {1}
-		错义突变R值: {2}
+		错义突变R值: {2},{5}
 		同义突变R值: {3}
-		LOF突变R值: {4}
-		dn/ds A群体: {5}
-		dn/ds B群体: {6}
+		LOF突变R值: {4},{6}
 		A群体: {7}
 		B群体: {8}
-		""".format(i, risk.sites, risk.risk_missense, risk.risk_synonymous, \
-			risk.risk_lof, risk.dn_ds_A, risk.dn_ds_B, \
-			','.join(risk.A_samples), ','.join(risk.B_samples))
-		#outf.write("{}\t{}\t{}\t{}\t{}\n".format(i, risk.sites, risk.risk_missense, risk.risk_synonymous, risk.risk_lof))
-	#outf.close()
+		""".format(i, funcstat.sites, funcstat.risk_missense_intergenic, \
+			funcstat.risk_synonymous_intergenic, funcstat.risk_lof_intergenic, \
+			funcstat.risk_missense_synonymous, funcstat.risk_lof_synonymous, \
+			','.join(funcstat.A_samples), ','.join(funcstat.B_samples))
 
 if __name__ == '__main__':
 	start = datetime.datetime.now()

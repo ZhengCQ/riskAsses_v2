@@ -86,7 +86,7 @@ class HighVar(object):
 
 
 class FuncRisk(object):
-	"""count functionnal，获得每一个功能的数目"""
+	"""count functional，获得每一个功能的数目"""
 	def __init__(self, invcf, A, B,
 		         A_samples, B_samples, C_samples,
 		         fix_sites, all_sites):
@@ -114,7 +114,7 @@ class FuncRisk(object):
 		self.get_grp_info(self.grp_dict)
 		#A = 'CCT'
 		#B = 'GCT'
-		self.count()
+		self.main()
 
 	def handle_grp(self, grp_dict, grp_name, grp_lst):
 		#将存在于vcf中的样本名称和idx存于字典
@@ -176,25 +176,53 @@ class FuncRisk(object):
 	def _get_allele_count(self, gt_mut_dict, name):
 		mut = gt_mut_dict[name]['mut_het']*1 + gt_mut_dict[name]['mut_mut']*2 +  gt_mut_dict[name]['mut_hom']*2
 		ref = gt_mut_dict[name]['mut_het']*1 + gt_mut_dict[name]['ref_hom']*2
-		total = mut + ref
-		return mut, ref, total
+		return mut, ref
 
-	def functionnal_count(self, gt_mut_dict, A_mut, func, A):
+	def functional_count(self, gt_mut_dict, A_mut, func, A):
 		#计算每组以及每个样本的功能累计
-		if A_mut > 0:
+		if A_mut > 0: #每个组的突变信息在外层获取，是因为前面有3个组的mut要先获取，用来比较。避免重复获取
 			try:
-				self.func_count_dict[func][A] += 1 #每个功能值初始化为0				
+				self.func_count_dict[func][A] += 1 #功能值初始化为0				
 			except:
 				#for k in rank_score:
 				self.func_count_dict.setdefault(func, {}).setdefault(A, 0) #每个功能值初始化为0
 		try:
+			#计算每个样本的功能累计
 			for sample in self.grp_dict[A]['name']:
-				mut, ref, allele = self._get_allele_count(gt_mut_dict, sample)
-				self.functionnal_count(gt_mut_dict, mut, func, sample)
+				mut, ref = self._get_allele_count(gt_mut_dict, sample) #gt_mut_dict用来获取样本的突变信息
+				self.functional_count(gt_mut_dict, mut, func, sample)
 		except:
 			pass
+			#print 'functional_count error for sample count'
 
-	def _derived_allele_freq(self, gtinfo, func, A, B, C): 
+	def functional_count_fi(self, A_fi_mut_dict, B_fi_mut_dict, func, A, B):
+		"""
+		A_fi_mut_dict: {'A':val1, 'sample1':val2}
+		B_fi_mut_dict: {'B':val1, 'sample1':val2}
+		A: 组
+		B: 组
+		两个组都要计算，主要是因为derived相对值需要A和B一起计算。
+		"""
+		def add_dict(func, A, fA):
+			try:
+				self.func_di_count_dict[func][A] += fA
+			except:
+				self.func_di_count_dict.setdefault(func, {}).setdefault(A, fA)
+
+		fA = A_fi_mut_dict[A]['di_alf']
+		fB = B_fi_mut_dict[B]['di_alf']
+		add_dict(func, 'AvsB', fA*(1 - fB))
+		add_dict(func, 'BvsA', fB*(1 - fA))
+		#self.func_di_count_dict.setdefault(func, {}).setdefault('AvsB', []).append(fA*(1 - fB))
+		#self.func_di_count_dict.setdefault(func, {}).setdefault('BvsA', []).append(fB*(1 - fA))
+		add_dict(func, A, fA)
+		add_dict(func, B, fB)
+		for sample in self.grp_dict[A]['name']:
+			add_dict(func, sample, A_fi_mut_dict[sample]['di_alf'])
+		for sample in self.grp_dict[B]['name']:
+			add_dict(func, sample, B_fi_mut_dict[sample]['di_alf'])
+
+	def _mut_fi_count(self, gtinfo, func, A, B, C): 
 		"""
 		gtinfo: 读取到的基因型数据 0/0|0/1|1/1
 		grp: 组别信息
@@ -205,18 +233,36 @@ class FuncRisk(object):
 		and dAi is the number of derived alleles called
 		"""
 		A_gt_mut_dict = self._gt_count(gtinfo, A)
-		A_mut, A_ref, A_allele = self._get_allele_count(A_gt_mut_dict, A)
-		self.functionnal_count(A_gt_mut_dict, A_mut, func, A)
+		A_mut, A_ref = self._get_allele_count(A_gt_mut_dict, A)
+		self.functional_count(A_gt_mut_dict, A_mut, func, A)
 
 		B_gt_mut_dict = self._gt_count(gtinfo, B)
-		B_mut, B_ref, B_allele = self._get_allele_count(B_gt_mut_dict, B)
-		self.functionnal_count(B_gt_mut_dict, B_mut, func, B)
+		B_mut, B_ref = self._get_allele_count(B_gt_mut_dict, B)
+		self.functional_count(B_gt_mut_dict, B_mut, func, B)
 
 		C_gt_mut_dict = self._gt_count(gtinfo, C)
-		C_mut, C_ref, C_allele = self._get_allele_count(C_gt_mut_dict, C)
-		self.functionnal_count(C_gt_mut_dict, C_mut, func, C)
-		
-		ni = A_allele
+		C_mut, C_ref = self._get_allele_count(C_gt_mut_dict, C)
+		self.functional_count(C_gt_mut_dict, C_mut, func, C)
+
+		A_fi_mut_dict = {}
+		B_fi_mut_dict = {}
+		self._fi_count(A_fi_mut_dict, A_gt_mut_dict, A_mut, A_ref, B_mut, B_ref, C_mut, C_ref, A)
+		self._fi_count(B_fi_mut_dict, B_gt_mut_dict, B_mut, B_ref, A_mut, A_ref, C_mut, C_ref, B)
+		self.functional_count_fi(A_fi_mut_dict, B_fi_mut_dict, func, A, B)
+
+	
+	def _fi_count(self, fi_mut_dict, gt_mut_dict, A_mut, A_ref, B_mut, B_ref, C_mut, C_ref, A):
+		#计算 每个组及每个样本的 derived_allele_freq，数目总和，并存在gt_mut_dict中，
+		fA = self._derived_allele_freq(A_mut, A_ref, B_mut, B_ref, C_mut, C_ref)
+		fi_mut_dict.setdefault(A, {}).setdefault('di_alf', fA)
+		if A in self.grp_dict:
+			for sample in self.grp_dict[A]['name']:
+				mut, ref = self._get_allele_count(gt_mut_dict, sample) #gt_mut_dict用来获取样本的突变信息
+				self._fi_count(fi_mut_dict, gt_mut_dict, mut, ref, B_mut, B_ref, C_mut, C_ref, sample)
+
+	def _derived_allele_freq(self, A_mut, A_ref, B_mut, B_ref, C_mut, C_ref, freq_cut = 1): #A群体，B群体及外群C
+		#derived allele 的计算公式
+		ni = A_mut + A_ref
 		di = 0
 		if A_mut > 0 and B_mut == 0 and C_mut == 0: # 这里ref为祖先碱基。B 群体均为ref，C群体均为ref, A群体携带有alt
 			di = A_mut
@@ -224,25 +270,33 @@ class FuncRisk(object):
 			di = A_ref #
 		fi = float(di)/float(ni)
 		#print di,ni,
-		if fi < 1 and fi > 0:
+		if fi < freq_cut and fi > 0: #
 			#print A_grp_gt_list,B_grp_gt_list,C_grp_gt_list,fi,di,ni
 			return fi
 		else:
 			return 0
 
-	def _risk_count(self, freq_dict, category):
+	def _risk_count(self, freq_dict, func1, func2):
 		"""
 		RA/B(C) = LA,B(C) / LB,A(C)
 		"""
+		#获取AvsB，及BvsA对应的idx位置
+		AvsB_idx = ''
+		BvsA_idx = ''
+		for idx, val in enumerate(freq_dict['functional']):
+			if val == 'AvsB':
+				AvsB_idx = idx
+			if val == 'BvsA':
+				BvsA_idx = idx
 		try:
-			L_AB_C = sum(freq_dict['AvsB'][category])/sum(freq_dict['AvsB']['intergenic'])
-			L_BA_C = sum(freq_dict['BvsA'][category])/sum(freq_dict['BvsA']['intergenic'])
+			L_AB_C = freq_dict[func1][AvsB_idx]/freq_dict[func2][AvsB_idx]
+			L_BA_C = freq_dict[func1][BvsA_idx]/freq_dict[func2][BvsA_idx]
 			#print category,sum(freq_dict['AvsB'][category]), sum(freq_dict['AvsB']['intergenic']),sum(freq_dict['BvsA'][category]), sum(freq_dict['BvsA']['intergenic'])
 		except:
 			L_AB_C = 0
 			L_BA_C = 0
 		try:
-			return L_AB_C/L_BA_C
+			return float(L_AB_C)/float(L_BA_C)
 		except:
 			return 0		
 
@@ -254,101 +308,71 @@ class FuncRisk(object):
 			start, end = self._jackknifes(fix_sites, all_sites) #重新得到的start, end
 		return start, end
 
-	def _freq_count_catalogue(self, freq_dict, gtinfo, func, A, B, C):	
-		def freq_count(category):
-			"""
-			分别计算A population 和 B population derived alleles frequence
-			分别添加AvsB,和BvsA的，不同categrory的数组
-			freq_dict: 字典
-			gtinfo：基因型数据
-			A: 群体A
-			B: 群体B
-			category：不同类型，如missse, lof, intergenic等
-			"""
-			fA = self._derived_allele_freq(gtinfo, func, A, B, C)
-			#print 'fA',category,fA,
-			fB = self._derived_allele_freq(gtinfo, func, B, A, C)
-			#print 'fB',category,fB
-			freq_dict.setdefault('AvsB', {}).setdefault(category, []).append(fA*(1 - fB))
-			freq_dict.setdefault('BvsA', {}).setdefault(category, []).append(fB*(1 - fA))
-
-        #计算不同catergory的di/dn频率值
-		if func == 'missense_variant':
-			#计算A vs B 及B vs A的，每一个错义突变位点的频率计算总和
-			freq_count('missense')
-		if func == 'synonymous_variant':
-			#计算A vs B 及B vs A的，每一个同义突变位点的频率计算总和
-			freq_count('synonymous')
-		if func in  ['stop_gained', 'stop_lost', 'start_lost', 'splice_acceptor_variant', 'splice_donor_variant', 'frameshift_variant']:
-			"""计算A vs B 及B vs A的，每一个lof位点的频率计算总和
-			'stop_gained': 10,  
-			'stop_lost': 10,
-			'start_lost': 10,
-			'splice_acceptor_variant': 9,
-			'splice_donor_variant': 9,
-			'frameshift_variant': 9,
-			"""
-			freq_count('lof')
-		if func == 'intergenic_region':
-     		#计算A vs B 及B vs A的，每一个基因减去突变位点的频率计算总和
-			freq_count('intergenic')	
-
-	def format_sum_stat(self):
+	def format_sum_stat(self, func_count_dict, pairlst=[]):
+		"""
+		@param func_count_dict: 'stop_lost': {'CCT': 0, 'SYSb6745': 0, 'CCT_4libs': 0, 'AB00001802': 0, 'SYSb6747': 0}
+		@return : 'synonymous_variant': [238]
+		1.输入整理
+		2.统计每个组及每个样本的突变值
+		3.统计lof/ds, dn/ds值
+		"""
 		func_dict_new = {}
-		func_dict_new.setdefault('header', [])
+		func_dict_new.setdefault('functional', [])
 		flag = True
 		#对功能根据危害度分值排序
 		sort_func_dict = sorted(self.rank_score.items(),key = lambda x:x[1],reverse = True)
 
-		#整理成行为组别及样本对应的数据，列为所有的功能
+		#行列整理
+		#行：为组及样本对应的数据，列：为所有的功能
+		def add_func(flag, sample):
+			if flag:
+				func_dict_new['functional'].append(sample)
+			try:
+				func_dict_new.setdefault(func, []).append(func_count_dict[func][sample])
+			except:
+				func_dict_new.setdefault(func, []).append(0)
+
 		for func in [ i[0] for i in sort_func_dict ]:
 			for grp in self.grp_dict:
-				if flag:
-					func_dict_new['header'].append(grp)
-				try:
-					func_dict_new.setdefault(func, []).append(self.func_count_dict[func][grp])
-				except:
-					func_dict_new.setdefault(func, []).append(0)
+				add_func(flag, grp)
 				for sample in self.grp_dict[grp]['name']:
-					if flag:
-						func_dict_new['header'].append(sample)
-					try:
-						func_dict_new.setdefault(func, []).append(self.func_count_dict[func][sample])
-					except:
-						func_dict_new.setdefault(func, []).append(0)
-			flag = False		
+					add_func(flag, sample)
+			if len(pairlst)>1:
+				for pair in pairlst:
+					add_func(flag, pair)
+			flag = False
 
+		#增加统计
 		funclist = list(func_dict_new.keys()) #后续字典会持续增加sum，dn_ds等key,因此需要先把功能相关的key存为list
-		
-		for idx, val in enumerate(func_dict_new['header']):
+		for idx, val in enumerate(func_dict_new['functional']):
 			sumlist = []
 			loflist = []
+			dn_ds = 0
+			lof_ds = 0
 			for k in funclist:
-				if k == 'header': continue
+				if k == 'functional': continue
 				sumlist.append(func_dict_new[k][idx])
 				if k in  ['stop_gained', 'stop_lost', 'start_lost', 'splice_acceptor_variant', 'splice_donor_variant', 'frameshift_variant']:
 					loflist.append(func_dict_new[k][idx])
 			total = sum(sumlist)
 			lof = sum(loflist)
-			dn_ds = float(func_dict_new['missense_variant'][idx])/float(func_dict_new['synonymous_variant'][idx])
-			lof_ds = float(lof)/float(func_dict_new['synonymous_variant'][idx])			
+			try:
+				dn_ds = float(func_dict_new['missense_variant'][idx])/float(func_dict_new['synonymous_variant'][idx])
+			except:
+				dn_ds = 0
+			try:
+				lof_ds = float(lof)/float(func_dict_new['synonymous_variant'][idx])
+			except:
+				lof_fs = 0
 			func_dict_new.setdefault('total',[]).append(total)
 			func_dict_new.setdefault('dn_ds',[]).append(dn_ds)
 			func_dict_new.setdefault('lof_ds',[]).append(lof_ds)
+		return func_dict_new
 
-		print 'functionnal' + '\t' + '\t'.join(func_dict_new['header'])
-		for k in func_dict_new:
-			if k not in self.func_count_dict: continue
-			print k,'\t'.join([ str(i) for i in func_dict_new[k]])
-		for k in [ 'dn_ds', 'lof_ds', 'total' ]:
-			print k,'\t'.join([ str(i) for i in func_dict_new[k]])
-
-
-	def count(self):
+	def main(self):
 		self.rank_score = rank_score
 		self.func_count_dict = {}
-		freq_dict = {}
-		dnds_dict = {}
+		self.func_di_count_dict = {}
 		start, end = self._jackknifes(self.fix_sites, self.all_sites) # block jackknifes on the set of sites
 
 		vcfinfo = Read.Readvcf(self.invcf).extract #读取到注释vcf的信息
@@ -358,16 +382,17 @@ class FuncRisk(object):
 			if int(num) < int(start) or int(num) > int(end): continue
 			high_var = HighVar(each.ann) #遇到多个功能时，取危害度最高的
 			#计算不同catergory的di/dn频率值,并统计每一个功能的在群体及个体间数目
-			self._freq_count_catalogue(freq_dict, each.gt, high_var.func, self.A, self.B, self.C)
+			self._mut_fi_count(each.gt, high_var.func, self.A, self.B, self.C)
         
-        #计算missense, synoymouns及lof的值
 		self.sites = end - start
-		self.format_sum_stat()
-        #群体A和B的dn/ds值
-		self.dn_ds_A = float(self.func_count_dict['missense_variant'][self.A])/float(self.func_count_dict['synonymous_variant'][self.A])
-		self.dn_ds_B = float(self.func_count_dict['missense_variant'][self.B])/float(self.func_count_dict['synonymous_variant'][self.B])	
-		#计算A群体和B群体相对风险值
-		self.risk_missense = self._risk_count(freq_dict, 'missense')
-		self.risk_synonymous = self._risk_count(freq_dict, 'synonymous')
-		self.risk_lof = self._risk_count(freq_dict, 'lof')
+		#整理转换字典，并增加统计
+		self.func_count_dict = self.format_sum_stat(self.func_count_dict)
+		self.func_di_count_dict = self.format_sum_stat(self.func_di_count_dict, pairlst=['AvsB', 'BvsA'])
+
+		#计算A群体和B群体相对风险值	
+		self.risk_missense_intergenic = self._risk_count(self.func_di_count_dict, 'missense_variant', 'intergenic_region')
+		self.risk_synonymous_intergenic = self._risk_count(self.func_di_count_dict, 'synonymous_variant', 'intergenic_region')
+		self.risk_lof_intergenic = self._risk_count(self.func_di_count_dict, 'lof','intergenic_region')
+		self.risk_missense_synonymous = self._risk_count(self.func_di_count_dict, 'missense_variant', 'synonymous_variant')
+		self.risk_lof_synonymous = self._risk_count(self.func_di_count_dict, 'lof','synonymous_variant')
 		return
