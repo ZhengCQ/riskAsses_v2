@@ -112,8 +112,6 @@ class FuncRisk(object):
 		grp_dict[grp]['name'] = 【'SYSb6745', 'SYSb6746', 'SYSb6747']
 		"""
 		self.get_grp_info(self.grp_dict)
-		#A = 'CCT'
-		#B = 'GCT'
 		self.main()
 
 	def handle_grp(self, grp_dict, grp_name, grp_lst):
@@ -133,12 +131,12 @@ class FuncRisk(object):
 				print 'Warnings: %s haven\'t sample in vcf'%(grp_name)
 
 	def get_grp_info(self, grp_dict):
+		"""
+		@return grp_dict: {'GCT': ['GCT_AB0002974', 'GCT_AB0002977', 'GCT_AB0002978', 'GCT_4libs']}
+		"""
 		self.handle_grp(grp_dict, self.A, self.A_samples)
 		self.handle_grp(grp_dict, self.B, self.B_samples)
 		self.handle_grp(grp_dict, self.C, self.C_samples)
-		#self.handle_grp(grp_dict, 'GCT', ['GCT_AB0002974', 'GCT_AB0002977', 'GCT_AB0002978', 'GCT_4libs'])
-		#self.handle_grp(grp_dict, 'CCT', ['SYSb6745', 'SYSb6746', 'SYSb6747', 'CCT_4libs'])
-
 
 	def _gt_count(self, gtinfo, grp):
 		"""
@@ -367,6 +365,7 @@ class FuncRisk(object):
 			func_dict_new.setdefault('total',[]).append(total)
 			func_dict_new.setdefault('dn_ds',[]).append(dn_ds)
 			func_dict_new.setdefault('lof_ds',[]).append(lof_ds)
+			func_dict_new.setdefault('lof',[]).append(lof)			
 		return func_dict_new
 
 	def main(self):
