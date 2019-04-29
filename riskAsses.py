@@ -37,14 +37,17 @@ def get_all_sites(vcf, work_dir):
 	return int(all_sites)
 
 def write_table(func_dict, outfile):
-	out_order = ['functionnal','splice_acceptor_variant','downstream_gene_variant',\
-				'synonymous_variant','stop_lost','intergenic_region','splice_region_variant',\
-				'stop_gained','upstream_gene_variant','missense_variant',\
-				'intron_variant','dn_ds','lof_ds','total']
+	out_order = ['functional', 'splice_donor_variant', 'stop_lost', 'stop_gained', 'start_lost','splice_acceptor_variant',\
+				 'lof','missense_variant','intron_variant','synonymous_variant', 'stop_retained_variant', \
+	 			'intergenic_region', 'splice_region_variant', 'upstream_gene_variant','downstream_gene_variant',\
+	  			'lof_intergenic', 'dn_intergenic', 'lof_ds', 'dn_ds', 'total']
 	outf = open(outfile , 'w')
 
-	for k in func_dict:
-		outf.write(k + '\t' +'\t'.join([ str(i) for i in func_dict[k]]) + '\n')
+	for k in out_order:
+		try:
+			outf.write(k + '\t' +'\t'.join([ str(i) for i in func_dict[k]]) + '\n')
+		except:
+			print '%s not exists in func_dict'%(k)
 
 def main():
 	args = ARGS.parse_args()

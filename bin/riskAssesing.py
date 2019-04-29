@@ -84,7 +84,6 @@ class HighVar(object):
 		else: # a,b均为空值
 			return ''
 
-
 class FuncRisk(object):
 	"""count functional，获得每一个功能的数目"""
 	def __init__(self, invcf, A, B,
@@ -268,7 +267,7 @@ class FuncRisk(object):
 			di = A_ref #
 		fi = float(di)/float(ni)
 		#print di,ni,
-		if fi < freq_cut and fi > 0: #
+		if fi <= freq_cut and fi > 0: #
 			#print A_grp_gt_list,B_grp_gt_list,C_grp_gt_list,fi,di,ni
 			return fi
 		else:
@@ -364,8 +363,8 @@ class FuncRisk(object):
 				lof_fs = 0
 			func_dict_new.setdefault('total',[]).append(total)
 			func_dict_new.setdefault('dn_ds',[]).append(dn_ds)
-			func_dict_new.setdefault('lof_ds',[]).append(lof_ds)
-			func_dict_new.setdefault('lof',[]).append(lof)			
+			#func_dict_new.setdefault('lof_ds',[]).append(lof_ds)
+			func_dict_new.setdefault('lof',[]).append(lof)		
 		return func_dict_new
 
 	def main(self):
