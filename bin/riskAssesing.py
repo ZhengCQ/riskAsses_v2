@@ -1,9 +1,13 @@
 #!/usr/bin/env  python
 # -*- coding:UTF-8 -*-
+# -*- coding:UTF-8 -*-
+# @Author: Zheng ChenQing
+# @Date: 2019.04.30
+# @E-mail: zhengchenqing@qq.com
 
 import sys
 import re
-import random
+import randoms
 import multiprocessing as mp
 #sys.path.append("../reohit2/bin/lib/")
 import Read as Read
@@ -84,6 +88,30 @@ class HighVar(object):
 		else: # a,b均为空值
 			return ''
 
+class HandleGroup(object):
+	def __init__(self, invcf, grp_dict, grp_name, grp_lst):
+		self.invcf = invcf
+		self.grp_dict = grp_dict
+		self.grp_name = grp_name
+		self.grp_lst = grp_lst
+		self.handle_grp()
+
+	def handle_grp(self):
+	#将存在于vcf中的样本名称和idx存于字典
+		samples_info = Read.Readvcf(self.invcf).samples
+		for idx, val in enumerate(samples_info.split('|')):
+			if val in self.grp_lst:
+				self.grp_dict.setdefault(self.grp_name, {}).setdefault('name', []).append(val)
+				self.grp_dict.setdefault(self.grp_name, {}).setdefault('index', []).append(idx)
+
+		#检查样本在vcf是否存在
+		for each in self.grp_lst:
+			try:
+				if each not in self.grp_dict[self.grp_name]['name']:
+					print 'Warnings: %s not in vcf'%(each)
+			except:
+				print 'Warnings: %s haven\'t sample in vcf'%(self.grp_name)
+
 class FuncRisk(object):
 	"""count functional，获得每一个功能的数目"""
 	def __init__(self, invcf, A, B,
@@ -110,32 +138,16 @@ class FuncRisk(object):
 		grp_dict[grp]['index'] = 【2，3，4]
 		grp_dict[grp]['name'] = 【'SYSb6745', 'SYSb6746', 'SYSb6747']
 		"""
-		self.get_grp_info(self.grp_dict)
+		self.get_grp_info()
 		self.main()
 
-	def handle_grp(self, grp_dict, grp_name, grp_lst):
-		#将存在于vcf中的样本名称和idx存于字典
-		samples_info = Read.Readvcf(self.invcf).samples
-		for idx, val in enumerate(samples_info.split('|')):
-			if val in grp_lst:
-				grp_dict.setdefault(grp_name, {}).setdefault('name', []).append(val)
-				grp_dict.setdefault(grp_name, {}).setdefault('index', []).append(idx)
-
-		#检查样本在vcf是否存在
-		for each in grp_lst:
-			try:
-				if each not in grp_dict[grp_name]['name']:
-					print 'Warnings: %s not in vcf'%(each)
-			except:
-				print 'Warnings: %s haven\'t sample in vcf'%(grp_name)
-
-	def get_grp_info(self, grp_dict):
+	def get_grp_info(self):
 		"""
 		@return grp_dict: {'GCT': ['GCT_AB0002974', 'GCT_AB0002977', 'GCT_AB0002978', 'GCT_4libs']}
 		"""
-		self.handle_grp(grp_dict, self.A, self.A_samples)
-		self.handle_grp(grp_dict, self.B, self.B_samples)
-		self.handle_grp(grp_dict, self.C, self.C_samples)
+		HandleGroup(self.invcf, self.grp_dict, self.A, self.A_samples)
+		HandleGroup(self.invcf, self.grp_dict, self.B, self.B_samples)
+		HandleGroup(self.invcf, self.grp_dict, self.C, self.C_samples)
 
 	def _gt_count(self, gtinfo, grp):
 		"""
@@ -159,7 +171,9 @@ class FuncRisk(object):
 		for idx, val in enumerate(grp_gt_list):
 			sample_name = self.grp_dict[grp]['name'][idx]
 			gt = val.split('/')
-			if gt[0] == '0' and gt[1] == '0':#字符为0,非数字
+			if gt[0] == '.' and gt[1] == '.':
+				add_num(grp, sample_name, 'miss') #./.				
+			elif gt[0] == '0' and gt[1] == '0':#字符为0,非数字
 				add_num(grp, sample_name, 'ref_hom') #0/0
 			elif gt[0] != '0' and gt[1] != '0':
 				if gt[0] == gt[1]:
@@ -298,6 +312,11 @@ class FuncRisk(object):
 			return 0		
 
 	def _jackknifes(self, fix_sites, all_sites):
+		"""
+		刀切固定长度
+		@param fix_sites: 固定位点数 
+		@param all_sites: 总的数目
+		"""
 		start = random.randint(0, all_sites) # get start from 0 and all_sites
 		#end = random.randint(start, all_sites) # get end from start and all_sites
 		end = start + fix_sites

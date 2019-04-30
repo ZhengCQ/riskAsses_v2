@@ -1,1 +1,11 @@
-python ../riskAsses.py -v testForAsses.vcf.gz -A CCT -B GCT -A_samples SYSb6745,SYSb6746,SYSb6747,CCT_4libs -B_samples GCT_AB0002974,GCT_AB0002977,GCT_AB0002978,GCT_4libs,SYSb6748,GCT_AB0000353,GCT_AB0001004,GCT_AB0001103 -C_samples AB0003001M1 
+python ../riskAsses.py -v testForAsses.vcf.gz \
+	-A CCT \
+	-B GCT \
+	-A_samples AB00001802,SYSb6745,SYSb6746,SYSb6747,CCT_4libs \
+	-B_samples GCT_AB0002974,GCT_AB0002977,GCT_AB0002978,GCT_4libs,SYSb6748,GCT_AB0000353,GCT_AB0001004,GCT_AB0001103 \
+	-C_samples AB0003001M1 \
+	--fixlength 120000 \
+	--A_samples_num 3 \
+	--B_samples_num 3 \
+	--n_core 4 \
+	--n_permutation 8
