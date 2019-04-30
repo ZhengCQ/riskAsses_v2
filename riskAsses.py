@@ -33,7 +33,7 @@ ARGS.add_argument(
 	help='C population（外群）的具体样本名称，多个样本以逗号分隔，如sample1,sample2')
 ARGS.add_argument(
     '--fixlength', dest='fixlength', type=int, 
-    help='随机刀切时，刀切的固定长度')
+    help='随机刀切时，刀切的固定长度，必须小于总数，不然采用默认值')
 ARGS.add_argument(
     '--A_samples_num', dest='A_samples_num', type=int, 
     help='A组随机样本数, 默认不随机，num大于或等于实际样本数时，按照A组实际样本输入')
@@ -52,7 +52,7 @@ def get_all_sites(vcf, work_dir):
 		os.system("vcftools --gzvcf %s --out %s/vcfstat"%(vcf, work_dir))
 	else:
 		os.system("vcftools --vcf %s --out %s/vcfstat"%(vcf, work_dir))
-	f = open ('%s/vcfstat.log'%(work_dir))
+	f = open ('%s/vcfstat.log'%(work_dir),'r')
 	all_sites = re.findall(r'possible (\d+) Sites', f.read())[0] #用findall,不用search
 	#os.system('rm ./vcfstat.log')
 	return int(all_sites)
@@ -77,7 +77,7 @@ def run_funcrisk(i, vcf, A_population, B_population,
 	funcstat = FuncRisk(vcf, A_population, B_population, A_samples_lst, B_samples_lst, 
 				C_samples_lst, fix_sites, all_sites)
 	i = i + 1
-	logfile = open("func_risk_Rvalue%s.log"%(i), 'w')
+	logfile = open(work_dir + "/func_risk_Rvalue%s.log"%(i), 'w')
 	loginfo = """
 刀切次数: {0}
 刀切位点数: {1}
@@ -103,14 +103,20 @@ def main():
 	if not args.vcf:
 		print('Use --help for command line help')
 		return
+	try:
+		os.makedirs(args.work_dir)
+	except:
+		print '%s exists' %(args.work_dir)
+
 	A_samples_lst = args.A_samples.split(',')
 	B_samples_lst = args.B_samples.split(',')
 	C_samples_lst = args.C_samples.split(',')
 	#all_sites = int(os.popen("less -S %s |wc -l" % (args.vcf)).read())
 	all_sites = get_all_sites(args.vcf, args.work_dir)
 	#all_sites = int(168773)
-	fix_sites = int(args.fixlength) if args.fixlength else all_sites/2
-	print 'There are %s sites'%(all_sites)
+	fix_sites = int(args.fixlength) if args.fixlength and args.fixlength < all_sites + 1000 else all_sites/2
+
+	print 'There are %s sites, cut %s sites to analysis'%(all_sites, fix_sites)
 
 	pool = mp.Pool(int(args.n_core)) #启动多线程池
 	for i in range(0, args.n_permutation):

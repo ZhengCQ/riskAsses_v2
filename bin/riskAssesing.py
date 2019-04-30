@@ -1,13 +1,12 @@
 #!/usr/bin/env  python
 # -*- coding:UTF-8 -*-
-# -*- coding:UTF-8 -*-
 # @Author: Zheng ChenQing
 # @Date: 2019.04.30
 # @E-mail: zhengchenqing@qq.com
 
 import sys
 import re
-import randoms
+import random
 import multiprocessing as mp
 #sys.path.append("../reohit2/bin/lib/")
 import Read as Read
