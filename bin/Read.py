@@ -90,6 +90,7 @@ class Vcfline(object):
 	"analyse vcf line info"
 	def __init__(self, line):
 		self.line = line
+		self.infos = self.line.strip().split('\t')
 		self.analyse()
 
 	def analyse(self):
@@ -103,17 +104,16 @@ class Vcfline(object):
 		if self.line.startswith('#'):
 			logging.error("The line starts with '#'!")
 			sys.exit(1)
-		infos = self.line.strip().split('\t')
-		self.chrom = infos[0]
-		self.pos = infos[1]
-		self.rs = infos[2]
-		self.ref = infos[3]
-		self.alt = infos[4]
-		self.qual = infos[5]
-		self.filt = infos[6]
-		self.info = infos[7]
-		self.fmt = infos[8]
-		self.detail = infos[9:]
+		self.chrom = self.infos[0]
+		self.pos = self.infos[1]
+		self.rs = self.infos[2]
+		self.ref = self.infos[3]
+		self.alt = self.infos[4]
+		self.qual = self.infos[5]
+		self.filt = self.infos[6]
+		self.info = self.infos[7]
+		self.fmt = self.infos[8]
+		self.detail = self.infos[9:]
 
 		# SnpEff
 		self.ann = Snpeff(self.info)

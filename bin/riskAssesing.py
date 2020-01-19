@@ -7,6 +7,7 @@
 import sys
 import re
 import random
+import json
 import multiprocessing as mp
 #sys.path.append("../reohit2/bin/lib/")
 import Read as Read
@@ -37,6 +38,8 @@ rank_score = {
 	'intragenic_variant': 1.5,
 	'sequence_feature': 1,
 }
+
+Gscores = json.load(open('../db/Grantham_Scores.json'))
 
 class HighVar(object):
 	"""docstring for HighVariant"""
@@ -154,7 +157,7 @@ class FuncRisk(object):
 		"""
 		def add_num(grp_name, sample_name, mut_type):
 			#初始化每个样本及每个突变基因型的值，
-			for i in ['ref_hom', 'mut_hom', 'mut_mut', 'mut_het']:
+			for i in ['ref_hom', 'mut_hom', 'mut_mut', 'mut_het', 'miss']:
 				gt_mut_dict.setdefault(sample_name, {}).setdefault(i, 0)
 				try:
 					gt_mut_dict[grp_name][i]
@@ -195,7 +198,7 @@ class FuncRisk(object):
 				self.func_count_dict[func][A] += 1 #功能值初始化为0				
 			except:
 				#for k in rank_score:
-				self.func_count_dict.setdefault(func, {}).setdefault(A, 0) #每个功能值初始化为0
+				self.func_count_dict.setdefault(func, {}).setdefault(A, 1) #每个功能值初始化为0
 		try:
 			#计算每个样本的功能累计
 			for sample in self.grp_dict[A]['name']:
@@ -232,7 +235,7 @@ class FuncRisk(object):
 		for sample in self.grp_dict[B]['name']:
 			add_dict(func, sample, B_fi_mut_dict[sample]['di_alf'])
 
-	def _mut_fi_count(self, gtinfo, func, A, B, C): 
+	def _mut_fi_count(self, gtinfo, high_var, A, B, C): 
 		"""
 		gtinfo: 读取到的基因型数据 0/0|0/1|1/1
 		grp: 组别信息
@@ -244,27 +247,29 @@ class FuncRisk(object):
 		"""
 		A_gt_mut_dict = self._gt_count(gtinfo, A)
 		A_mut, A_ref = self._get_allele_count(A_gt_mut_dict, A)
-		self.functional_count(A_gt_mut_dict, A_mut, func, A)
+		self.functional_count(A_gt_mut_dict, A_mut, high_var.func, A)
 
 		B_gt_mut_dict = self._gt_count(gtinfo, B)
 		B_mut, B_ref = self._get_allele_count(B_gt_mut_dict, B)
-		self.functional_count(B_gt_mut_dict, B_mut, func, B)
+		self.functional_count(B_gt_mut_dict, B_mut, high_var.func, B)
 
 		C_gt_mut_dict = self._gt_count(gtinfo, C)
 		C_mut, C_ref = self._get_allele_count(C_gt_mut_dict, C)
-		self.functional_count(C_gt_mut_dict, C_mut, func, C)
+		#print C_mut, C_ref
+		self.functional_count(C_gt_mut_dict, C_mut, high_var.func, C)
 
-		A_fi_mut_dict = {}
-		B_fi_mut_dict = {}
-		self._fi_count(A_fi_mut_dict, A_gt_mut_dict, A_mut, A_ref, B_mut, B_ref, C_mut, C_ref, A)
-		self._fi_count(B_fi_mut_dict, B_gt_mut_dict, B_mut, B_ref, A_mut, A_ref, C_mut, C_ref, B)
-		self.functional_count_fi(A_fi_mut_dict, B_fi_mut_dict, func, A, B)
+		self.A_fi_mut_dict = {}
+		self.B_fi_mut_dict = {}
+		self._fi_count(self.A_fi_mut_dict, A_gt_mut_dict, A_mut, A_ref, B_mut, B_ref, C_mut, C_ref, A)
+		self._fi_count(self.B_fi_mut_dict, B_gt_mut_dict, B_mut, B_ref, A_mut, A_ref, C_mut, C_ref, B)
+		self.functional_count_fi(self.A_fi_mut_dict, self.B_fi_mut_dict, high_var.func, A, B)
 
 	
 	def _fi_count(self, fi_mut_dict, gt_mut_dict, A_mut, A_ref, B_mut, B_ref, C_mut, C_ref, A):
 		#计算 每个组及每个样本的 derived_allele_freq，数目总和，并存在gt_mut_dict中，
 		fA = self._derived_allele_freq(A_mut, A_ref, B_mut, B_ref, C_mut, C_ref)
 		fi_mut_dict.setdefault(A, {}).setdefault('di_alf', fA)
+		
 		if A in self.grp_dict:
 			for sample in self.grp_dict[A]['name']:
 				mut, ref = self._get_allele_count(gt_mut_dict, sample) #gt_mut_dict用来获取样本的突变信息
@@ -278,7 +283,10 @@ class FuncRisk(object):
 			di = A_mut
 		elif A_ref > 0 and B_ref == 0  and C_ref == 0: #这里alt为祖先碱基。B群体均为alt，C群体均为alt，A群体携带有ref
 			di = A_ref #
-		fi = float(di)/float(ni)
+		if ni == 0:
+			fi = 0
+		else:
+			fi = float(di)/float(ni)
 		#print di,ni,
 		if fi <= freq_cut and fi > 0: #
 			#print A_grp_gt_list,B_grp_gt_list,C_grp_gt_list,fi,di,ni
@@ -389,7 +397,10 @@ class FuncRisk(object):
 		self.rank_score = rank_score
 		self.func_count_dict = {}
 		self.func_di_count_dict = {}
-		start, end = self._jackknifes(self.fix_sites, self.all_sites) # block jackknifes on the set of sites
+		start = 0
+		end = self.all_sites
+		if self.fix_sites < self.all_sites - 1000:
+			start, end = self._jackknifes(self.fix_sites, self.all_sites) # block jackknifes on the set of sites
 
 		vcfinfo = Read.Readvcf(self.invcf).extract #读取到注释vcf的信息
 		num = 0
@@ -398,7 +409,21 @@ class FuncRisk(object):
 			if int(num) < int(start) or int(num) > int(end): continue
 			high_var = HighVar(each.ann) #遇到多个功能时，取危害度最高的
 			#计算不同catergory的di/dn频率值,并统计每一个功能的在群体及个体间数目
-			self._mut_fi_count(each.gt, high_var.func, self.A, self.B, self.C)
+			#print gtinfo, high_var.func, high_var.hgvs_p, 'CCT', A_fi_mut_dict['CCT']['di_alf'],'GCT',B_fi_mut_dict['GCT']['di_alf']
+
+			self._mut_fi_count(each.gt, high_var, self.A, self.B, self.C)
+			missense_score = '.'
+			if high_var.func == 'missense_variant':
+				aa1,aa2 = re.search(r'p\.(\w{3})\d+(\w{3})',high_var.hgvs_p).groups()[:] ## p.Arg122Met
+				print aa1,aa2
+				try:
+					missense_score = Gscores[aa1][aa2]
+				except:
+					missense_score = Gscores[aa2][aa1]
+			print each.chrom, each.pos, high_var.func, high_var.hgvs_p, self.A_fi_mut_dict['CCT']['di_alf'],self.B_fi_mut_dict['GCT']['di_alf'],missense_score
+#			if high_var.func == 'missense_variant':
+#				print (high_var.hgvs_p)
+
         
 		self.sites = end - start
 		#整理转换字典，并增加统计

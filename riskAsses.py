@@ -33,7 +33,7 @@ ARGS.add_argument(
 	help='C population（外群）的具体样本名称，多个样本以逗号分隔，如sample1,sample2')
 ARGS.add_argument(
     '--fixlength', dest='fixlength', type=int, 
-    help='随机刀切时，刀切的固定长度，必须小于总数，不然采用默认值')
+    help='随机刀切时，刀切的固定长度, 数值大于总位点数时候，用总位点数')
 ARGS.add_argument(
     '--A_samples_num', dest='A_samples_num', type=int, 
     help='A组随机样本数, 默认不随机，num大于或等于实际样本数时，按照A组实际样本输入')
@@ -91,7 +91,7 @@ B群体样本: {8}
 		funcstat.risk_missense_synonymous, funcstat.risk_lof_synonymous, \
 		','.join(funcstat.A_samples), ','.join(funcstat.B_samples))
 	
-	print loginfo
+	#print loginfo
 	logfile.write(loginfo)
 	write_table(funcstat.func_count_dict, work_dir + "/func_stat_info_%s.xls"%(i))
 	write_table(funcstat.func_di_count_dict, work_dir + "/func_derived_info_%s.xls"%(i))
@@ -112,11 +112,13 @@ def main():
 	B_samples_lst = args.B_samples.split(',')
 	C_samples_lst = args.C_samples.split(',')
 	#all_sites = int(os.popen("less -S %s |wc -l" % (args.vcf)).read())
-	all_sites = get_all_sites(args.vcf, args.work_dir)
-	#all_sites = int(168773)
-	fix_sites = int(args.fixlength) if args.fixlength and args.fixlength < all_sites + 1000 else all_sites/2
-
-	print 'There are %s sites, cut %s sites to analysis'%(all_sites, fix_sites)
+	#all_sites = get_all_sites(args.vcf, args.work_dir)
+	all_sites = int(68775)
+	fix_sites = int(args.fixlength) if args.fixlength else all_sites/2
+	if all_sites -1000 > fix_sites:
+		print ('There are %s sites, cut %s sites to analysis'%(all_sites, fix_sites))
+	else:
+		print ('There are %s sites, cut %s sites great than all sites, and turn off cut'%(all_sites, fix_sites))
 
 	pool = mp.Pool(int(args.n_core)) #启动多线程池
 	for i in range(0, args.n_permutation):
@@ -126,9 +128,10 @@ def main():
 		if args.B_samples_num and args.B_samples_num < len(B_samples_lst):
 			B_samples_lst = random.sample(B_samples_lst, args.B_samples_num) #随机B样本
 			print "启动B组样本随机，随机样本为%s"%(','.join(B_samples_lst))
-		
-		pool.apply_async(run_funcrisk, args=(i,args.vcf, args.A_population, args.B_population,
-				A_samples_lst, B_samples_lst, C_samples_lst, fix_sites, all_sites, args.work_dir)) #函数写入到多线程池
+		run_funcrisk(i, args.vcf, args.A_population, args.B_population,
+				A_samples_lst, B_samples_lst, C_samples_lst, fix_sites, all_sites, args.work_dir)	
+		#pool.apply_async(run_funcrisk, args=(i, args.vcf, args.A_population, args.B_population,
+		#		A_samples_lst, B_samples_lst, C_samples_lst, fix_sites, all_sites, args.work_dir)) #函数写入到多线程池
 	print('Waiting for all subprocesses done...')
 	pool.close()
 	pool.join()
