@@ -21,6 +21,8 @@ rank_score = {
 	'splice_donor_variant': 9,
 	'frameshift_variant': 9,
 	'missense_variant': 8,
+	'missense_deleterious': 9,
+	'missense_benign': 7,
 	'disruptive_inframe_deletion': 4,
 	'splice_region_variant': 4,
 	'intron_variant': 3,
@@ -116,9 +118,9 @@ class HandleGroup(object):
 
 class FuncRisk(object):
 	"""count functional，获得每一个功能的数目"""
-	def __init__(self, invcf, A, B,
+	def __init__(self, i, invcf, A, B,
 		         A_samples, B_samples, C_samples,
-		         fix_sites, all_sites):
+		         fix_sites, all_sites, work_dir):
 		"""
 		invcf: snpEff注释后的vcf
 		A: A population name
@@ -126,6 +128,7 @@ class FuncRisk(object):
 		A_samples: A samples 数组
 		B_samples: B samples 数组
 		"""
+		self.i = i
 		self.invcf = invcf
 		self.A = A
 		self.B = B
@@ -134,7 +137,8 @@ class FuncRisk(object):
 		self.B_samples = B_samples
 		self.C_samples = C_samples
 		self.fix_sites = fix_sites
-		self.all_sites = all_sites	
+		self.all_sites = all_sites
+		self.work_dir  = work_dir
 		self.grp_dict = {}
 		""" #根据组别信息，得到组别相关的字典, 
 		grp_dict[grp]['index'] = 【2，3，4]
@@ -235,7 +239,7 @@ class FuncRisk(object):
 		for sample in self.grp_dict[B]['name']:
 			add_dict(func, sample, B_fi_mut_dict[sample]['di_alf'])
 
-	def _mut_fi_count(self, gtinfo, high_var, A, B, C): 
+	def _mut_fi_count(self, gtinfo, func, A, B, C): 
 		"""
 		gtinfo: 读取到的基因型数据 0/0|0/1|1/1
 		grp: 组别信息
@@ -247,23 +251,24 @@ class FuncRisk(object):
 		"""
 		A_gt_mut_dict = self._gt_count(gtinfo, A)
 		A_mut, A_ref = self._get_allele_count(A_gt_mut_dict, A)
-		self.functional_count(A_gt_mut_dict, A_mut, high_var.func, A)
+		self.functional_count(A_gt_mut_dict, A_mut, func, A)
 
 		B_gt_mut_dict = self._gt_count(gtinfo, B)
 		B_mut, B_ref = self._get_allele_count(B_gt_mut_dict, B)
-		self.functional_count(B_gt_mut_dict, B_mut, high_var.func, B)
+		self.functional_count(B_gt_mut_dict, B_mut, func, B)
 
 		C_gt_mut_dict = self._gt_count(gtinfo, C)
 		C_mut, C_ref = self._get_allele_count(C_gt_mut_dict, C)
 		#print C_mut, C_ref
-		self.functional_count(C_gt_mut_dict, C_mut, high_var.func, C)
+		self.functional_count(C_gt_mut_dict, C_mut, func, C)
 
 		self.A_fi_mut_dict = {}
 		self.B_fi_mut_dict = {}
 		self._fi_count(self.A_fi_mut_dict, A_gt_mut_dict, A_mut, A_ref, B_mut, B_ref, C_mut, C_ref, A)
 		self._fi_count(self.B_fi_mut_dict, B_gt_mut_dict, B_mut, B_ref, A_mut, A_ref, C_mut, C_ref, B)
-		self.functional_count_fi(self.A_fi_mut_dict, self.B_fi_mut_dict, high_var.func, A, B)
 
+
+		self.functional_count_fi(self.A_fi_mut_dict, self.B_fi_mut_dict, func, A, B)
 	
 	def _fi_count(self, fi_mut_dict, gt_mut_dict, A_mut, A_ref, B_mut, B_ref, C_mut, C_ref, A):
 		#计算 每个组及每个样本的 derived_allele_freq，数目总和，并存在gt_mut_dict中，
@@ -404,6 +409,8 @@ class FuncRisk(object):
 
 		vcfinfo = Read.Readvcf(self.invcf).extract #读取到注释vcf的信息
 		num = 0
+		derived_freq_fi = open('%s/derived_freq_siteinfo_%s.txt'%(self.work_dir, self.i),'w')
+		derived_freq_fi.write('Chr\tPos\tFunc\tHgv_p\t{}\t{}\tScore\n'.format(self.A,self.B))
 		for each in vcfinfo:
 			num +=1
 			if int(num) < int(start) or int(num) > int(end): continue
@@ -411,26 +418,37 @@ class FuncRisk(object):
 			#计算不同catergory的di/dn频率值,并统计每一个功能的在群体及个体间数目
 			#print gtinfo, high_var.func, high_var.hgvs_p, 'CCT', A_fi_mut_dict['CCT']['di_alf'],'GCT',B_fi_mut_dict['GCT']['di_alf']
 
-			self._mut_fi_count(each.gt, high_var, self.A, self.B, self.C)
+			self._mut_fi_count(each.gt, high_var.func, self.A, self.B, self.C)
+			#### 这里记录错义突变的分值
 			missense_score = '.'
 			if high_var.func == 'missense_variant':
 				aa1,aa2 = re.search(r'p\.(\w{3})\d+(\w{3})',high_var.hgvs_p).groups()[:] ## p.Arg122Met
-				print aa1,aa2
 				try:
 					missense_score = Gscores[aa1][aa2]
 				except:
 					missense_score = Gscores[aa2][aa1]
-			print each.chrom, each.pos, high_var.func, high_var.hgvs_p, self.A_fi_mut_dict['CCT']['di_alf'],self.B_fi_mut_dict['GCT']['di_alf'],missense_score
+				if missense_score >= 150:
+					self._mut_fi_count(each.gt, 'missense_deleterious', self.A, self.B, self.C)
+				else:
+					self._mut_fi_count(each.gt, 'missense_benign', self.A, self.B, self.C)
+
+			
+			derived_freq_fi.write("{}\t{}\t{}\t{}\t{}\t{}\t{}\n".\
+				format(each.chrom, each.pos, high_var.func, \
+				high_var.hgvs_p, self.A_fi_mut_dict['CCT']['di_alf'],\
+				self.B_fi_mut_dict['GCT']['di_alf'],missense_score))
+
+		derived_freq_fi.close()
 #			if high_var.func == 'missense_variant':
 #				print (high_var.hgvs_p)
 
-        
 		self.sites = end - start
 		#整理转换字典，并增加统计
 		self.func_count_dict = self.format_sum_stat(self.func_count_dict)
 		self.func_di_count_dict = self.format_sum_stat(self.func_di_count_dict, pairlst=['AvsB', 'BvsA'])
 
 		#计算A群体和B群体相对风险值	
+		self.risk_missense_score = self._risk_count(self.func_di_count_dict, 'missense_deleterious', 'missense_benign')
 		self.risk_missense_intergenic = self._risk_count(self.func_di_count_dict, 'missense_variant', 'intergenic_region')
 		self.risk_synonymous_intergenic = self._risk_count(self.func_di_count_dict, 'synonymous_variant', 'intergenic_region')
 		self.risk_lof_intergenic = self._risk_count(self.func_di_count_dict, 'lof','intergenic_region')

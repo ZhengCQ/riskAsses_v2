@@ -59,7 +59,7 @@ def get_all_sites(vcf, work_dir):
 
 def write_table(func_dict, outfile):
 	out_order = ['functional', 'splice_donor_variant', 'stop_lost', 'stop_gained', 'start_lost','splice_acceptor_variant',\
-				 'lof','missense_variant','intron_variant','synonymous_variant', 'stop_retained_variant', \
+				 'lof','missense_variant','missense_deleterious','missense_benign','intron_variant','synonymous_variant', 'stop_retained_variant', \
 	 			'intergenic_region', 'splice_region_variant', 'upstream_gene_variant','downstream_gene_variant',\
 	  			'dn_ds', 'total']
 	  			#'lof_intergenic', 'dn_intergenic', 'lof_ds',
@@ -74,8 +74,8 @@ def run_funcrisk(i, vcf, A_population, B_population,
 				A_samples_lst, B_samples_lst, C_samples_lst, fix_sites, all_sites, work_dir):
 	start = time.time()
 	print('Run funcRisk task %s (%s)...' % (i, os.getpid()))
-	funcstat = FuncRisk(vcf, A_population, B_population, A_samples_lst, B_samples_lst, 
-				C_samples_lst, fix_sites, all_sites)
+	funcstat = FuncRisk(i, vcf, A_population, B_population, A_samples_lst, B_samples_lst, 
+				C_samples_lst, fix_sites, all_sites, work_dir)
 	i = i + 1
 	logfile = open(work_dir + "/func_risk_Rvalue%s.log"%(i), 'w')
 	loginfo = """
@@ -84,11 +84,13 @@ def run_funcrisk(i, vcf, A_population, B_population,
 错义突变R A/B值(intergenic,synonymous): {2},{5}
 同义突变R A/B值: {3}
 LOF突变R A/B值(intergenic,synonymous): {4},{6}
-A群体样本: {7}
-B群体样本: {8}
+错义突变R A/B值(deleterious/benign score): {7}
+A群体样本: {8}
+B群体样本: {9}
 	""".format(i, funcstat.sites, funcstat.risk_missense_intergenic, \
 		funcstat.risk_synonymous_intergenic, funcstat.risk_lof_intergenic, \
 		funcstat.risk_missense_synonymous, funcstat.risk_lof_synonymous, \
+		funcstat.risk_missense_score, \
 		','.join(funcstat.A_samples), ','.join(funcstat.B_samples))
 	
 	#print loginfo
@@ -128,10 +130,10 @@ def main():
 		if args.B_samples_num and args.B_samples_num < len(B_samples_lst):
 			B_samples_lst = random.sample(B_samples_lst, args.B_samples_num) #随机B样本
 			print "启动B组样本随机，随机样本为%s"%(','.join(B_samples_lst))
-		run_funcrisk(i, args.vcf, args.A_population, args.B_population,
-				A_samples_lst, B_samples_lst, C_samples_lst, fix_sites, all_sites, args.work_dir)	
-		#pool.apply_async(run_funcrisk, args=(i, args.vcf, args.A_population, args.B_population,
-		#		A_samples_lst, B_samples_lst, C_samples_lst, fix_sites, all_sites, args.work_dir)) #函数写入到多线程池
+		#run_funcrisk(i, args.vcf, args.A_population, args.B_population,
+		#		A_samples_lst, B_samples_lst, C_samples_lst, fix_sites, all_sites, args.work_dir)	
+		pool.apply_async(run_funcrisk, args=(i, args.vcf, args.A_population, args.B_population,
+				A_samples_lst, B_samples_lst, C_samples_lst, fix_sites, all_sites, args.work_dir)) #函数写入到多线程池
 	print('Waiting for all subprocesses done...')
 	pool.close()
 	pool.join()
