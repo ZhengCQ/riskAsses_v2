@@ -68,7 +68,7 @@ def write_table(func_dict, outfile):
 		try:
 			outf.write(k + '\t' +'\t'.join([ str(i) for i in func_dict[k]]) + '\n')
 		except:
-			print '%s not exists in func_dict for %s'%(k, outfile)
+			print ('%s not exists in func_dict for %s'%(k, outfile))
 
 def run_funcrisk(i, vcf, A_population, B_population,
 				A_samples_lst, B_samples_lst, C_samples_lst, fix_sites, all_sites, work_dir):
@@ -108,7 +108,7 @@ def main():
 	try:
 		os.makedirs(args.work_dir)
 	except:
-		print '%s exists' %(args.work_dir)
+		print ('%s exists' %(args.work_dir))
 
 	A_samples_lst = args.A_samples.split(',')
 	B_samples_lst = args.B_samples.split(',')
@@ -126,14 +126,14 @@ def main():
 	for i in range(0, args.n_permutation):
 		if args.A_samples_num and args.A_samples_num < len(A_samples_lst):
 			A_samples_lst = random.sample(A_samples_lst, args.A_samples_num) #随机A样本
-			print "启动A组样本随机，随机样本为%s"%(','.join(A_samples_lst))
+			print ("启动A组样本随机，随机样本为%s"%(','.join(A_samples_lst)))
 		if args.B_samples_num and args.B_samples_num < len(B_samples_lst):
 			B_samples_lst = random.sample(B_samples_lst, args.B_samples_num) #随机B样本
-			print "启动B组样本随机，随机样本为%s"%(','.join(B_samples_lst))
-		#run_funcrisk(i, args.vcf, args.A_population, args.B_population,
-		#		A_samples_lst, B_samples_lst, C_samples_lst, fix_sites, all_sites, args.work_dir)	
-		pool.apply_async(run_funcrisk, args=(i, args.vcf, args.A_population, args.B_population,
-				A_samples_lst, B_samples_lst, C_samples_lst, fix_sites, all_sites, args.work_dir)) #函数写入到多线程池
+			print ("启动B组样本随机，随机样本为%s"%(','.join(B_samples_lst)))
+		run_funcrisk(i, args.vcf, args.A_population, args.B_population,
+				A_samples_lst, B_samples_lst, C_samples_lst, fix_sites, all_sites, args.work_dir)	
+		#pool.apply_async(run_funcrisk, args=(i, args.vcf, args.A_population, args.B_population,
+		#		A_samples_lst, B_samples_lst, C_samples_lst, fix_sites, all_sites, args.work_dir)) #函数写入到多线程池
 	print('Waiting for all subprocesses done...')
 	pool.close()
 	pool.join()
@@ -144,4 +144,4 @@ if __name__ == '__main__':
 	start = time.time()
 	main()
 	end = time.time()
-	print "时间总计%s"%(end - start)
+	print ("时间总计%s"%(end - start))

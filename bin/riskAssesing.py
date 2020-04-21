@@ -10,7 +10,7 @@ import random
 import json
 import multiprocessing as mp
 #sys.path.append("../reohit2/bin/lib/")
-import Read as Read
+import bin.Read as Read
 import datetime
 rank_score = {
 	'stop_gained': 10,
@@ -112,9 +112,9 @@ class HandleGroup(object):
 		for each in self.grp_lst:
 			try:
 				if each not in self.grp_dict[self.grp_name]['name']:
-					print 'Warnings: %s not in vcf'%(each)
+					print ('Warnings: %s not in vcf'%(each))
 			except:
-				print 'Warnings: %s haven\'t sample in vcf'%(self.grp_name)
+				print ('Warnings: %s haven\'t sample in vcf'%(self.grp_name))
 
 class FuncRisk(object):
 	"""count functional，获得每一个功能的数目"""
@@ -267,12 +267,12 @@ class FuncRisk(object):
 		self._fi_count(self.A_fi_mut_dict, A_gt_mut_dict, A_mut, A_ref, B_mut, B_ref, C_mut, C_ref, A)
 		self._fi_count(self.B_fi_mut_dict, B_gt_mut_dict, B_mut, B_ref, A_mut, A_ref, C_mut, C_ref, B)
 
-
 		self.functional_count_fi(self.A_fi_mut_dict, self.B_fi_mut_dict, func, A, B)
 	
 	def _fi_count(self, fi_mut_dict, gt_mut_dict, A_mut, A_ref, B_mut, B_ref, C_mut, C_ref, A):
 		#计算 每个组及每个样本的 derived_allele_freq，数目总和，并存在gt_mut_dict中，
 		fA = self._derived_allele_freq(A_mut, A_ref, B_mut, B_ref, C_mut, C_ref)
+		print(fA, A_mut, A_ref, B_mut, B_ref, C_mut, C_ref, A)
 		fi_mut_dict.setdefault(A, {}).setdefault('di_alf', fA)
 		
 		if A in self.grp_dict:

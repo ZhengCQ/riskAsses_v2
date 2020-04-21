@@ -161,6 +161,7 @@ class Readvcf(object):
 		"""get samples from #CHROM line"""
 		with gzip.open(self.vcf, 'r') as infile:
 			for line in infile:
+				line = line.decode()
 				if line.startswith("#C"):
 					self.samples = line.strip().split('\t')[9:]
 					self.samples = ('|').join(self.samples)
@@ -171,6 +172,7 @@ class Readvcf(object):
 		"""@yield: chrom, pos, rs, ref, alt, qual, filt, info, fmt, samples"""
 		with gzip.open(self.vcf, 'r') as infile:
 			for line in infile:
+				line = line.decode()
 				if line.startswith("#"): continue  # release #CHROM
 				yield(Vcfline(line))
 
