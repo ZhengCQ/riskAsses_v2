@@ -76,29 +76,21 @@ def run_funcrisk(i, vcf, A_population, B_population,
 	print('Run funcRisk task %s (%s)...' % (i, os.getpid()))
 	funcstat = FuncRisk(i, vcf, A_population, B_population, A_samples_lst, B_samples_lst, 
 				C_samples_lst, fix_sites, all_sites, work_dir)
-	i = i + 1
-	logfile = open(work_dir + "/func_risk_Rvalue%s.log"%(i), 'w')
-	loginfo = """
-刀切次数: {0}
-刀切位点数: {1}
-错义突变R A/B值(intergenic,synonymous): {2},{5}
-同义突变R A/B值: {3}
-LOF突变R A/B值(intergenic,synonymous): {4},{6}
-错义突变R A/B值(deleterious/benign score): {7}
-A群体样本: {8}
-B群体样本: {9}
-	""".format(i, funcstat.sites, funcstat.risk_missense_intergenic, \
-		funcstat.risk_synonymous_intergenic, funcstat.risk_lof_intergenic, \
-		funcstat.risk_missense_synonymous, funcstat.risk_lof_synonymous, \
-		funcstat.risk_missense_score, \
-		','.join(funcstat.A_samples), ','.join(funcstat.B_samples))
 	
-	#print loginfo
-	logfile.write(loginfo)
-	write_table(funcstat.func_count_dict, work_dir + "/func_stat_info_%s.xls"%(i))
-	write_table(funcstat.func_di_count_dict, work_dir + "/func_derived_info_%s.xls"%(i))
+	write_json('%s/Func_HomHet_Count_%s.json'%(work_dir,i),funcstat.func_homhet_count_dict)
+	write_json('%s/Func_di_HomHet_Count_%s.json'%(work_dir,i),funcstat.func_di_homhet_count_dict)
+	write_json('%s/Func_Count_%s.json'%(work_dir,i),funcstat.func_count_dict)
+	write_json('%s/Func_di_Count_%s.json'%(work_dir,i),funcstat.func_di_count_dict)
+	
+	#write_table(funcstat.func_count_dict, work_dir + "/func_stat_info_%s.xls"%(i))
+	#write_table(funcstat.func_di_count_dict, work_dir + "/func_derived_info_%s.xls"%(i))
 	end = time.time()
+
 	print('Task %s runs %0.2f seconds.' % (i, (end - start)))
+
+def write_json(outf,dict_info):
+	with open(outf, 'w') as fi:
+		fi.write(json.dumps(dict_info))
 
 def main():
 	args = ARGS.parse_args()
@@ -109,7 +101,6 @@ def main():
 		os.makedirs(args.work_dir)
 	except:
 		print ('%s exists' %(args.work_dir))
-
 	A_samples_lst = args.A_samples.split(',')
 	B_samples_lst = args.B_samples.split(',')
 	C_samples_lst = args.C_samples.split(',')
@@ -124,6 +115,7 @@ def main():
 
 	pool = mp.Pool(int(args.n_core)) #启动多线程池
 	for i in range(0, args.n_permutation):
+		i = i + 1
 		if args.A_samples_num and args.A_samples_num < len(A_samples_lst):
 			A_samples_lst = random.sample(A_samples_lst, args.A_samples_num) #随机A样本
 			print ("启动A组样本随机，随机样本为%s"%(','.join(A_samples_lst)))
