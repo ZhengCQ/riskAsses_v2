@@ -117,8 +117,6 @@ class HandleGroup(object):
 				print ('Warnings: %s haven\'t sample in vcf'%(self.grp_name))
 
 
-
-
 class FuncRisk(object):
 	"""count functional，获得每一个功能的数目"""
 	def __init__(self, i, invcf, A, B,
