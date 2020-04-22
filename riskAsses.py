@@ -105,8 +105,8 @@ def main():
 	B_samples_lst = args.B_samples.split(',')
 	C_samples_lst = args.C_samples.split(',')
 	#all_sites = int(os.popen("less -S %s |wc -l" % (args.vcf)).read())
-	#all_sites = get_all_sites(args.vcf, args.work_dir)
-	all_sites = int(68775)
+	all_sites = get_all_sites(args.vcf, args.work_dir)
+	#all_sites = int(68775)
 	fix_sites = int(args.fixlength) if args.fixlength else all_sites/2
 	if all_sites -1000 > fix_sites:
 		print ('There are %s sites, cut %s sites to analysis'%(all_sites, fix_sites))

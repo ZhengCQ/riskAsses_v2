@@ -219,7 +219,7 @@ class FuncRisk(object):
 		B_fi_mut_dict: {'B':val1, 'sample1':val2}
 		A: 组
 		B: 组
-		两个组都要计算，主要是因为derived相对值需要A和B一起计算。
+		两个组都要计算，derived相对值需要A和B一起计算。
 		"""
 		def add_dict(func, A, fA):
 			try:
@@ -252,17 +252,32 @@ class FuncRisk(object):
 					       .setdefault(func, {}).setdefault(A, A_fi_mut_dict[A][mut_type])
 
 		for mut_dict, grp in zip([A_fi_mut_dict, B_fi_mut_dict],[A, B]):
-			for mut_type in ['mut_hom', 'mut_het']:
+			for mut_type in ['mut_hom', 'mut_het', 'ref_hom']:
 				add_dict(self.func_homhet_count_dict, mut_dict, func, grp, mut_type)
 				## di allele frequency
-				if 	A_fi_mut_dict[A]['di_alf'] > 0 or B_fi_mut_dict[B]['di_alf'] > 0:
+				if 	A_fi_mut_dict[A]['di_type'] != 'NONE':
 					add_dict(self.func_di_homhet_count_dict, mut_dict, func, grp, mut_type)
 				## 每个样本的
 				for sample in self.grp_dict[grp]['name']:
 					add_dict(self.func_homhet_count_dict, mut_dict, func, sample, mut_type)
 					## di allele frequency
-					if 	A_fi_mut_dict[A]['di_alf'] > 0 or B_fi_mut_dict[B]['di_alf'] > 0:
+					if A_fi_mut_dict[A]['di_type'] != 'NONE':
 					    add_dict(self.func_di_homhet_count_dict, mut_dict, func, sample, mut_type)
+			
+			if A_fi_mut_dict[A]['di_type'] != 'NONE':
+				### 添加di het 
+				add_dict(self.func_di_homhet_count_dict, mut_dict, func, grp, 'mut_het')
+				for sample in self.grp_dict[grp]['name']:
+					add_dict(self.func_homhet_count_dict, mut_dict, func, sample, 'mut_het')
+				### 添加di hom
+				if A_fi_mut_dict[A]['di_type'] != 'ALT':
+					add_dict(self.func_di_homhet_count_dict, mut_dict, func, grp, 'mut_hom')
+					for sample in self.grp_dict[grp]['name']:
+						add_dict(self.func_homhet_count_dict, mut_dict, func, sample, 'mut_hom')
+				elif A_fi_mut_dict[A]['di_type'] != 'REF':	
+					add_dict(self.func_di_homhet_count_dict, mut_dict, func, grp, 'ref_hom')
+					for sample in self.grp_dict[grp]['name']:
+						add_dict(self.func_homhet_count_dict, mut_dict, func, sample, 'ref_hom')
 
 	def _mut_fi_count(self, gtinfo, func, A, B, C): 
 		"""
@@ -296,12 +311,13 @@ class FuncRisk(object):
 	
 	def _fi_count(self, fi_mut_dict, gt_mut_dict, A_mut, A_ref, B_mut, B_ref, C_mut, C_ref, A):
 		#计算 每个组及每个样本的 derived_allele_freq，数目总和，并存在gt_mut_dict中，
-		fA = self._derived_allele_freq(A_mut, A_ref, B_mut, B_ref, C_mut, C_ref)
+		fA, di_type = self._derived_allele_freq(A_mut, A_ref, B_mut, B_ref, C_mut, C_ref)
 		fi_mut_dict.setdefault(A, {}).setdefault('di_alf', fA)
+		fi_mut_dict.setdefault(A, {}).setdefault('di_type', di_type)
 		##突变基因型的数目
 		fi_mut_dict.setdefault(A, {}).setdefault('mut_hom', gt_mut_dict[A]['mut_hom'])
 		fi_mut_dict.setdefault(A, {}).setdefault('mut_het', gt_mut_dict[A]['mut_het'])
-
+		fi_mut_dict.setdefault(A, {}).setdefault('ref_hom', gt_mut_dict[A]['ref_hom'])
 		
 		if A in self.grp_dict:
 			## 增加每一样本的di_alf信息
@@ -311,12 +327,15 @@ class FuncRisk(object):
 
 	def _derived_allele_freq(self, A_mut, A_ref, B_mut, B_ref, C_mut, C_ref, freq_cut = 1): #A群体，B群体及外群C
 		#derived allele 的计算公式
+		di_type = 'NONE'
 		ni = A_mut + A_ref
 		di = 0
 		if A_mut > 0 and B_mut == 0 and C_mut == 0: # 这里ref为祖先碱基。B 群体均为ref，C群体均为ref, A群体携带有alt
 			di = A_mut
+			di_type = 'ALT'
 		elif A_ref > 0 and B_ref == 0  and C_ref == 0: #这里alt为祖先碱基。B群体均为alt，C群体均为alt，A群体携带有ref
 			di = A_ref #
+			di_type = 'REF'
 		if ni == 0:
 			fi = 0
 		else:
@@ -324,9 +343,10 @@ class FuncRisk(object):
 		#print di,ni,
 		if fi <= freq_cut and fi > 0: #
 			#print A_grp_gt_list,B_grp_gt_list,C_grp_gt_list,fi,di,ni
-			return fi
+			return fi, di_type
 		else:
-			return 0
+			return 0, di_type
+		
 
 	def _risk_count(self, freq_dict, func1, func2):
 		"""
@@ -380,7 +400,7 @@ class FuncRisk(object):
 		samples = Read.Readvcf(self.invcf).samples #读取样本信息
 		num = 0
 		derived_freq_fi = open('%s/derived_freq_siteinfo_%s.txt'%(self.work_dir, self.i),'w')
-		header = 'Chr\tPos\tFunc\tHgv_p\t{0}_di_freq\t{1}_di_freq\tScore\t{0}_gt_hom\t{1}_gt_hom\t{0}_gt_het\t{1}_gt_het'.format(self.A,self.B)
+		header = 'Chr\tPos\tFunc\tHgv_p\t{0}_di_freq\t{1}_di_freq\t{0}_di_type\t{1}_di_type\tScore\t{0}_gt_hom\t{1}_gt_hom\t{0}_gt_het\t{1}_gt_het'.format(self.A,self.B)
 		
 		header_lst = header.split('\t') + samples.split('|')
 		derived_freq_fi.write("\t".join(header_lst) + '\n')
@@ -392,30 +412,40 @@ class FuncRisk(object):
 			#计算不同catergory的di/dn频率值,并统计每一个功能的在群体及个体间数目
 			## print gtinfo, high_var.func, high_var.hgvs_p, 'CCT', A_fi_mut_dict['CCT']['di_alf'],'GCT',B_fi_mut_dict['GCT']['di_alf']
 			A_fi_mut_dict, B_fi_mut_dict = self._mut_fi_count(each.gt, high_var.func, self.A, self.B, self.C)
+			
+			## func_di_count_dict 统计di
+			self.functional_count_fi(A_fi_mut_dict, B_fi_mut_dict, high_var.func, self.A, self.B)
+			## 统计hom 和het数目
+			self.functional_count_homhet(A_fi_mut_dict, B_fi_mut_dict, high_var.func, self.A, self.B)
 
 			#### 这里记录错义突变的分值
 			missense_score = '.'
 			if high_var.func == 'missense_variant':
+				misssense_class = ''
 				aa1,aa2 = re.search(r'p\.(\w{3})\d+(\w{3})',high_var.hgvs_p).groups()[:] ## p.Arg122Met
 				try:
 					missense_score = Gscores[aa1][aa2]
 				except:
 					missense_score = Gscores[aa2][aa1]
+				
 				if missense_score >= 150:
-					A_fi_mut_dict, B_fi_mut_dict = self._mut_fi_count(each.gt, 'missense_deleterious', self.A, self.B, self.C)
+					misssense_class = 'missense_deleterious'
 				else:
-					A_fi_mut_dict, B_fi_mut_dict = self._mut_fi_count(each.gt, 'missense_benign', self.A, self.B, self.C)
+					misssense_class = 'missense_benign'
+				
+				A_fi_mut_dict, B_fi_mut_dict = self._mut_fi_count(each.gt, misssense_class, self.A, self.B, self.C)
 
-		    ## func_di_count_dict 统计di
-			self.functional_count_fi(A_fi_mut_dict, B_fi_mut_dict, high_var.func, self.A, self.B)
-			## 统计hom 和het数目
-			self.functional_count_homhet(A_fi_mut_dict, B_fi_mut_dict, high_var.func, self.A, self.B)
+				## func_di_count_dict 统计di
+				self.functional_count_fi(A_fi_mut_dict, B_fi_mut_dict, misssense_class, self.A, self.B)
+				## 统计hom 和het数目
+				self.functional_count_homhet(A_fi_mut_dict, B_fi_mut_dict, misssense_class, self.A, self.B)
             
 			### 输出每一条记录数据
 			results = "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}".\
 				format(each.chrom, each.pos, high_var.func, \
 				high_var.hgvs_p, A_fi_mut_dict['CCT']['di_alf'],\
-				B_fi_mut_dict['GCT']['di_alf'],missense_score,\
+				B_fi_mut_dict['GCT']['di_alf'], A_fi_mut_dict['CCT']['di_type'],\
+				B_fi_mut_dict['GCT']['di_type'],missense_score,\
 				A_fi_mut_dict['CCT']['mut_hom'],B_fi_mut_dict['GCT']['mut_hom'],\
 				A_fi_mut_dict['CCT']['mut_het'],B_fi_mut_dict['GCT']['mut_het'])
 			
