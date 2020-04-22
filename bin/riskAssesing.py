@@ -254,30 +254,24 @@ class FuncRisk(object):
 		for mut_dict, grp in zip([A_fi_mut_dict, B_fi_mut_dict],[A, B]):
 			for mut_type in ['mut_hom', 'mut_het', 'ref_hom']:
 				add_dict(self.func_homhet_count_dict, mut_dict, func, grp, mut_type)
-				## di allele frequency
-				if 	A_fi_mut_dict[A]['di_type'] != 'NONE':
-					add_dict(self.func_di_homhet_count_dict, mut_dict, func, grp, mut_type)
 				## 每个样本的
 				for sample in self.grp_dict[grp]['name']:
 					add_dict(self.func_homhet_count_dict, mut_dict, func, sample, mut_type)
-					## di allele frequency
-					if A_fi_mut_dict[A]['di_type'] != 'NONE':
-					    add_dict(self.func_di_homhet_count_dict, mut_dict, func, sample, mut_type)
 			
 			if A_fi_mut_dict[A]['di_type'] != 'NONE':
 				### 添加di het 
 				add_dict(self.func_di_homhet_count_dict, mut_dict, func, grp, 'mut_het')
 				for sample in self.grp_dict[grp]['name']:
-					add_dict(self.func_homhet_count_dict, mut_dict, func, sample, 'mut_het')
+					add_dict(self.func_di_homhet_count_dict, mut_dict, func, sample, 'mut_het')
 				### 添加di hom
-				if A_fi_mut_dict[A]['di_type'] != 'ALT':
+				if A_fi_mut_dict[A]['di_type'] == 'ALT':
 					add_dict(self.func_di_homhet_count_dict, mut_dict, func, grp, 'mut_hom')
 					for sample in self.grp_dict[grp]['name']:
-						add_dict(self.func_homhet_count_dict, mut_dict, func, sample, 'mut_hom')
-				elif A_fi_mut_dict[A]['di_type'] != 'REF':	
+						add_dict(self.func_di_homhet_count_dict, mut_dict, func, sample, 'mut_hom')
+				elif A_fi_mut_dict[A]['di_type'] == 'REF':
 					add_dict(self.func_di_homhet_count_dict, mut_dict, func, grp, 'ref_hom')
 					for sample in self.grp_dict[grp]['name']:
-						add_dict(self.func_homhet_count_dict, mut_dict, func, sample, 'ref_hom')
+						add_dict(self.func_di_homhet_count_dict, mut_dict, func, sample, 'ref_hom')
 
 	def _mut_fi_count(self, gtinfo, func, A, B, C): 
 		"""
@@ -441,7 +435,7 @@ class FuncRisk(object):
 				self.functional_count_homhet(A_fi_mut_dict, B_fi_mut_dict, misssense_class, self.A, self.B)
             
 			### 输出每一条记录数据
-			results = "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}".\
+			results = "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}".\
 				format(each.chrom, each.pos, high_var.func, \
 				high_var.hgvs_p, A_fi_mut_dict['CCT']['di_alf'],\
 				B_fi_mut_dict['GCT']['di_alf'], A_fi_mut_dict['CCT']['di_type'],\
