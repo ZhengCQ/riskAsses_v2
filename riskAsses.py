@@ -90,7 +90,7 @@ def run_funcrisk(i, vcf, A_population, B_population,
 
 def write_json(outf,dict_info):
 	with open(outf, 'w') as fi:
-		fi.write(json.dumps(dict_info))
+		fi.write(json.dumps(dict_info, indent=4))
 
 def main():
 	args = ARGS.parse_args()

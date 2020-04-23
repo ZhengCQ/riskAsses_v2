@@ -252,23 +252,24 @@ class FuncRisk(object):
 					       .setdefault(func, {}).setdefault(A, A_fi_mut_dict[A][mut_type])
 
 		for mut_dict, grp in zip([A_fi_mut_dict, B_fi_mut_dict],[A, B]):
+			### add all mut hom info
 			for mut_type in ['mut_hom', 'mut_het', 'ref_hom']:
 				add_dict(self.func_homhet_count_dict, mut_dict, func, grp, mut_type)
 				## 每个样本的
 				for sample in self.grp_dict[grp]['name']:
 					add_dict(self.func_homhet_count_dict, mut_dict, func, sample, mut_type)
-			
-			if A_fi_mut_dict[A]['di_type'] != 'NONE':
+			### add derived mut and hom info
+			if mut_dict[grp]['di_type'] != 'NONE':
 				### 添加di het 
 				add_dict(self.func_di_homhet_count_dict, mut_dict, func, grp, 'mut_het')
 				for sample in self.grp_dict[grp]['name']:
 					add_dict(self.func_di_homhet_count_dict, mut_dict, func, sample, 'mut_het')
 				### 添加di hom
-				if A_fi_mut_dict[A]['di_type'] == 'ALT':
+				if mut_dict[grp]['di_type'] == 'ALT':
 					add_dict(self.func_di_homhet_count_dict, mut_dict, func, grp, 'mut_hom')
 					for sample in self.grp_dict[grp]['name']:
 						add_dict(self.func_di_homhet_count_dict, mut_dict, func, sample, 'mut_hom')
-				elif A_fi_mut_dict[A]['di_type'] == 'REF':
+				elif mut_dict[grp]['di_type'] == 'REF':
 					add_dict(self.func_di_homhet_count_dict, mut_dict, func, grp, 'ref_hom')
 					for sample in self.grp_dict[grp]['name']:
 						add_dict(self.func_di_homhet_count_dict, mut_dict, func, sample, 'ref_hom')
@@ -394,7 +395,7 @@ class FuncRisk(object):
 		samples = Read.Readvcf(self.invcf).samples #读取样本信息
 		num = 0
 		derived_freq_fi = open('%s/derived_freq_siteinfo_%s.txt'%(self.work_dir, self.i),'w')
-		header = 'Chr\tPos\tFunc\tHgv_p\t{0}_di_freq\t{1}_di_freq\t{0}_di_type\t{1}_di_type\tScore\t{0}_gt_hom\t{1}_gt_hom\t{0}_gt_het\t{1}_gt_het'.format(self.A,self.B)
+		header = 'Chr\tPos\tFunc\tHgv_p\t{0}_di_freq\t{1}_di_freq\t{0}_di_type\t{1}_di_type\tScore\t{0}_gt_refhom\t{1}_gt_refhom\t{0}_gt_muthom\t{1}_gt_muthom\t{0}_gt_muthet\t{1}_gt_muthet'.format(self.A,self.B)
 		
 		header_lst = header.split('\t') + samples.split('|')
 		derived_freq_fi.write("\t".join(header_lst) + '\n')
@@ -435,11 +436,12 @@ class FuncRisk(object):
 				self.functional_count_homhet(A_fi_mut_dict, B_fi_mut_dict, misssense_class, self.A, self.B)
             
 			### 输出每一条记录数据
-			results = "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}".\
+			results = "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}".\
 				format(each.chrom, each.pos, high_var.func, \
 				high_var.hgvs_p, A_fi_mut_dict['CCT']['di_alf'],\
 				B_fi_mut_dict['GCT']['di_alf'], A_fi_mut_dict['CCT']['di_type'],\
 				B_fi_mut_dict['GCT']['di_type'],missense_score,\
+				A_fi_mut_dict['CCT']['ref_hom'],B_fi_mut_dict['GCT']['ref_hom'],\
 				A_fi_mut_dict['CCT']['mut_hom'],B_fi_mut_dict['GCT']['mut_hom'],\
 				A_fi_mut_dict['CCT']['mut_het'],B_fi_mut_dict['GCT']['mut_het'])
 			
