@@ -1,7 +1,7 @@
 #!/usr/bin/env  python
 # -*- coding:UTF-8 -*-
 # @Author: Zheng ChenQing
-# @Date: 2019.04.30
+# @Date: 2021.10.18
 # @E-mail: zhengchenqing@qq.com
 
 
@@ -54,8 +54,8 @@ def get_all_sites(vcf, work_dir):
 		os.system("vcftools --vcf %s --out %s/vcfstat"%(vcf, work_dir))
 	f = open ('%s/vcfstat.log'%(work_dir),'r')
 	all_sites = re.findall(r'possible (\d+) Sites', f.read())[0] #用findall,不用search
-	#os.system('rm ./vcfstat.log')
-	return int(all_sites)
+	os.system('rm ./vcfstat.log')
+	return all_sites
 
 def write_table(func_dict, outfile):
 	out_order = ['functional', 'splice_donor_variant', 'stop_lost', 'stop_gained', 'start_lost','splice_acceptor_variant',\
