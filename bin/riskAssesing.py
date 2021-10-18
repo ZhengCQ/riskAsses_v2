@@ -6,6 +6,7 @@
 
 import sys
 import re
+import os
 import random
 import json
 import multiprocessing as mp
@@ -41,7 +42,8 @@ rank_score = {
 	'sequence_feature': 1,
 }
 
-Gscores = json.load(open('../db/Grantham_Scores.json'))
+current_dir = os.path.abspath(os.path.dirname(__file__))
+Gscores = json.load(open('{}/../db/Grantham_Scores.json'.format(current_dir)))
 
 class HighVar(object):
 	"""docstring for HighVariant"""
@@ -389,13 +391,13 @@ class FuncRisk(object):
 
 		start = 0
 		end = self.all_sites
-		#if self.fix_sites < self.all_sites:
-		#	start, end = self._jackknifes(self.fix_sites, self.all_sites) # block jackknifes on the set of sites
+		if self.fix_sites < self.all_sites:
+			start, end = self._jackknifes(self.fix_sites, self.all_sites) # block jackknifes on the set of sites
 		vcfinfo = Read.Readvcf(self.invcf).extract #读取到注释vcf的信息
 		samples = Read.Readvcf(self.invcf).samples #读取样本信息
 		num = 0
 		derived_freq_fi = open('%s/derived_freq_siteinfo_%s.txt'%(self.work_dir, self.i),'w')
-		header = 'Chr\tPos\tFunc\tHgv_p\t{0}_di_freq\t{1}_di_freq\t{0}_di_type\t{1}_di_type\tScore\t{0}_gt_refhom\t{1}_gt_refhom\t{0}_gt_muthom\t{1}_gt_muthom\t{0}_gt_muthet\t{1}_gt_muthet'.format(self.A,self.B)
+		header = 'Chr\tPos\tGene\tFunc\tHgv_p\t{0}_di_freq\t{1}_di_freq\t{0}_di_type\t{1}_di_type\tScore\t{0}_gt_refhom\t{1}_gt_refhom\t{0}_gt_muthom\t{1}_gt_muthom\t{0}_gt_muthet\t{1}_gt_muthet'.format(self.A,self.B)
 		
 		header_lst = header.split('\t') + samples.split('|')
 		derived_freq_fi.write("\t".join(header_lst) + '\n')
@@ -436,8 +438,8 @@ class FuncRisk(object):
 				self.functional_count_homhet(A_fi_mut_dict, B_fi_mut_dict, misssense_class, self.A, self.B)
             
 			### 输出每一条记录数据
-			results = "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}".\
-				format(each.chrom, each.pos, high_var.func, \
+			results = "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}".\
+				format(each.chrom, each.pos, high_var.gene, high_var.func, \
 				high_var.hgvs_p, A_fi_mut_dict['CCT']['di_alf'],\
 				B_fi_mut_dict['GCT']['di_alf'], A_fi_mut_dict['CCT']['di_type'],\
 				B_fi_mut_dict['GCT']['di_type'],missense_score,\

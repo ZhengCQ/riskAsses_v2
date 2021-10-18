@@ -122,10 +122,10 @@ def main():
 		if args.B_samples_num and args.B_samples_num < len(B_samples_lst):
 			B_samples_lst = random.sample(B_samples_lst, args.B_samples_num) #随机B样本
 			print ("启动B组样本随机，随机样本为%s"%(','.join(B_samples_lst)))
-		run_funcrisk(i, args.vcf, args.A_population, args.B_population,
-				A_samples_lst, B_samples_lst, C_samples_lst, fix_sites, all_sites, args.work_dir)	
-		#pool.apply_async(run_funcrisk, args=(i, args.vcf, args.A_population, args.B_population,
-		#		A_samples_lst, B_samples_lst, C_samples_lst, fix_sites, all_sites, args.work_dir)) #函数写入到多线程池
+		#run_funcrisk(i, args.vcf, args.A_population, args.B_population,
+		#		A_samples_lst, B_samples_lst, C_samples_lst, fix_sites, all_sites, args.work_dir)	
+		pool.apply_async(run_funcrisk, args=(i, args.vcf, args.A_population, args.B_population,
+				A_samples_lst, B_samples_lst, C_samples_lst, fix_sites, all_sites, args.work_dir)) #函数写入到多线程池
 	print('Waiting for all subprocesses done...')
 	pool.close()
 	pool.join()

@@ -9,3 +9,4 @@ python ../riskAsses.py -v testForAsses.vcf.gz \
 	--B_samples_num 3 \
 	--n_core 4 \
 	--n_permutation 8
+	-w test1
