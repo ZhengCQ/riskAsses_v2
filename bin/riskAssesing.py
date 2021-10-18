@@ -1,12 +1,11 @@
 #!/usr/bin/env  python
 # -*- coding:UTF-8 -*-
 # @Author: Zheng ChenQing
-# @Date: 2019.04.30
+# @Date: 2021.10.18
 # @E-mail: zhengchenqing@qq.com
 
 import sys
 import re
-import os
 import random
 import json
 import multiprocessing as mp
@@ -42,8 +41,7 @@ rank_score = {
 	'sequence_feature': 1,
 }
 
-current_dir = os.path.abspath(os.path.dirname(__file__))
-Gscores = json.load(open('{}/../db/Grantham_Scores.json'.format(current_dir)))
+Gscores = json.load(open('/BIGDATA1/sysuls_yliu_1/linhongzhou/biosoft/riskAsses_v2-master/db/Grantham_Scores.json'))
 
 class HighVar(object):
 	"""docstring for HighVariant"""
@@ -60,6 +58,7 @@ class HighVar(object):
 		self.transcript = ''
 		index = ''
 		max_func = self.func
+		#print(funcLst)
 		for idx, val in enumerate(funcLst):
 			if re.search(r'&',val): # splice_region_variant&intron_variant 存在 &，且不为空值
 				tmpLst = val.split('&') #存在一个& 及多个&的情况
@@ -72,6 +71,8 @@ class HighVar(object):
 			if self.func != max_func:
 				self.func = max_func
 				index = idx	
+				#print(index)
+				#print(self.func)
 		# 根据危害度最大的功能的值，获取相应的其他值
 		self.hgvs_c = self.anno.hgvs_cs[index]
 		self.hgvs_p = self.anno.hgvs_ps[index]
@@ -148,6 +149,7 @@ class FuncRisk(object):
 		grp_dict[grp]['name'] = 【'SYSb6745', 'SYSb6746', 'SYSb6747']
 		"""
 		self.get_grp_info()
+		#查看是否正确获取样本名和idx
 		self.main()
 
 	def get_grp_info(self):
@@ -397,7 +399,7 @@ class FuncRisk(object):
 		samples = Read.Readvcf(self.invcf).samples #读取样本信息
 		num = 0
 		derived_freq_fi = open('%s/derived_freq_siteinfo_%s.txt'%(self.work_dir, self.i),'w')
-		header = 'Chr\tPos\tGene\tFunc\tHgv_p\t{0}_di_freq\t{1}_di_freq\t{0}_di_type\t{1}_di_type\tScore\t{0}_gt_refhom\t{1}_gt_refhom\t{0}_gt_muthom\t{1}_gt_muthom\t{0}_gt_muthet\t{1}_gt_muthet'.format(self.A,self.B)
+		header = 'Chr\tPos\tFunc\tHgv_p\t{0}_di_freq\t{1}_di_freq\t{0}_di_type\t{1}_di_type\tScore\t{0}_gt_refhom\t{1}_gt_refhom\t{0}_gt_muthom\t{1}_gt_muthom\t{0}_gt_muthet\t{1}_gt_muthet'.format(self.A,self.B)
 		
 		header_lst = header.split('\t') + samples.split('|')
 		derived_freq_fi.write("\t".join(header_lst) + '\n')
@@ -405,6 +407,7 @@ class FuncRisk(object):
 		for each in vcfinfo:
 			num +=1
 			if int(num) < int(start) or int(num) > int(end): continue
+
 			high_var = HighVar(each.ann) #遇到多个功能时，取危害度最高的
 			#计算不同catergory的di/dn频率值,并统计每一个功能的在群体及个体间数目
 			## print gtinfo, high_var.func, high_var.hgvs_p, 'CCT', A_fi_mut_dict['CCT']['di_alf'],'GCT',B_fi_mut_dict['GCT']['di_alf']
@@ -438,14 +441,14 @@ class FuncRisk(object):
 				self.functional_count_homhet(A_fi_mut_dict, B_fi_mut_dict, misssense_class, self.A, self.B)
             
 			### 输出每一条记录数据
-			results = "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}".\
-				format(each.chrom, each.pos, high_var.gene, high_var.func, \
-				high_var.hgvs_p, A_fi_mut_dict['CCT']['di_alf'],\
-				B_fi_mut_dict['GCT']['di_alf'], A_fi_mut_dict['CCT']['di_type'],\
-				B_fi_mut_dict['GCT']['di_type'],missense_score,\
-				A_fi_mut_dict['CCT']['ref_hom'],B_fi_mut_dict['GCT']['ref_hom'],\
-				A_fi_mut_dict['CCT']['mut_hom'],B_fi_mut_dict['GCT']['mut_hom'],\
-				A_fi_mut_dict['CCT']['mut_het'],B_fi_mut_dict['GCT']['mut_het'])
+			results = "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}".\
+				format(each.chrom, each.pos, high_var.func, \
+				high_var.hgvs_p, A_fi_mut_dict[self.A]['di_alf'],\
+				B_fi_mut_dict[self.B]['di_alf'], A_fi_mut_dict[self.A]['di_type'],\
+				B_fi_mut_dict[self.B]['di_type'],missense_score,\
+				A_fi_mut_dict[self.A]['ref_hom'],B_fi_mut_dict[self.B]['ref_hom'],\
+				A_fi_mut_dict[self.A]['mut_hom'],B_fi_mut_dict[self.B]['mut_hom'],\
+				A_fi_mut_dict[self.A]['mut_het'],B_fi_mut_dict[self.B]['mut_het'])
 			
 			results_lst = results.split('\t') + each.gt.split('|')
 			derived_freq_fi.write("\t".join(results_lst) + '\n')
