@@ -171,7 +171,6 @@ class FuncRisk(object):
 			#指定类型的值增加
 			gt_mut_dict[grp_name][mut_type] += 1
 			gt_mut_dict[sample_name][mut_type] += 1
-
 		grp_gt_list = [gtinfo.split('|')[i] for i in self.grp_dict[grp]['index']]
 		gt_mut_dict = {}
 

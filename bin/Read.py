@@ -128,7 +128,10 @@ class Vcfline(object):
 			if re.match('GT:AD:DP', self.fmt):  # here, just consider one sample, need improve to multiple samples
 				# GT:AD:DP:GQ:PL  1/1:0,2155:2155:99:85781,6535,0
 				self.gt.append(more[0])
-				self.ad.append(more[1].split(',')[1])
+				try:
+				    self.ad.append(more[1].split(',')[1])
+				except:
+					self.ad.append('.')
 				self.dp.append(more[2])  # alternative allelic depth
 			else:
 				self.gt.append(more[0])  # GT:GQ:PL
