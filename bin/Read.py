@@ -77,6 +77,7 @@ class Snpeff(object):
 		"""
 		self.pred_lof = '.'  # Predicted loss of function: [Number_of_transcripts_in_gene, Percent_of_transcripts_affected]
 		self.pred_nmd = '.'  # Predicted nonsense mediated decay: [Number_of_transcripts_in_gene, Percent_of_transcripts_affected]
+		#print(self.ann)
 		search_lof = re.search('LOF=\(([^;]+)\)', self.ann)
 		search_nmd = re.search('NMD=\(([^;]+)\)', self.ann)
 		if search_lof:  # Gene_Name | Gene_ID | Number_of_transcripts_in_gene |Percent_of_transcripts_affected
@@ -123,7 +124,7 @@ class Vcfline(object):
 		# only one alternative allele. No mutil-alt.
 		self.len_var = abs(len(self.alt) - len(self.ref))  # variant length. 0: SNP; >0: indel
 		for single in self.detail:
-			#print single
+			#print (single)
 			more = single.split(':')
 			if re.match('GT:AD:DP', self.fmt):  # here, just consider one sample, need improve to multiple samples
 				# GT:AD:DP:GQ:PL  1/1:0,2155:2155:99:85781,6535,0

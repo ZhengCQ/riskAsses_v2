@@ -1,7 +1,7 @@
 #!/usr/bin/env  python
 # -*- coding:UTF-8 -*-
 # @Author: Zheng ChenQing
-# @Date: 2019.04.30
+# @Date: 2021.10.18
 # @E-mail: zhengchenqing@qq.com
 
 
@@ -54,8 +54,8 @@ def get_all_sites(vcf, work_dir):
 		os.system("vcftools --vcf %s --out %s/vcfstat"%(vcf, work_dir))
 	f = open ('%s/vcfstat.log'%(work_dir),'r')
 	all_sites = re.findall(r'possible (\d+) Sites', f.read())[0] #用findall,不用search
-	#os.system('rm ./vcfstat.log')
-	return int(all_sites)
+	os.system('rm ./vcfstat.log')
+	return all_sites
 
 def write_table(func_dict, outfile):
 	out_order = ['functional', 'splice_donor_variant', 'stop_lost', 'stop_gained', 'start_lost','splice_acceptor_variant',\
@@ -122,10 +122,10 @@ def main():
 		if args.B_samples_num and args.B_samples_num < len(B_samples_lst):
 			B_samples_lst = random.sample(B_samples_lst, args.B_samples_num) #随机B样本
 			print ("启动B组样本随机，随机样本为%s"%(','.join(B_samples_lst)))
-		run_funcrisk(i, args.vcf, args.A_population, args.B_population,
-				A_samples_lst, B_samples_lst, C_samples_lst, fix_sites, all_sites, args.work_dir)	
-		#pool.apply_async(run_funcrisk, args=(i, args.vcf, args.A_population, args.B_population,
-		#		A_samples_lst, B_samples_lst, C_samples_lst, fix_sites, all_sites, args.work_dir)) #函数写入到多线程池
+		#run_funcrisk(i, args.vcf, args.A_population, args.B_population,
+		#		A_samples_lst, B_samples_lst, C_samples_lst, fix_sites, all_sites, args.work_dir)	
+		pool.apply_async(run_funcrisk, args=(i, args.vcf, args.A_population, args.B_population,
+				A_samples_lst, B_samples_lst, C_samples_lst, fix_sites, all_sites, args.work_dir)) #函数写入到多线程池
 	print('Waiting for all subprocesses done...')
 	pool.close()
 	pool.join()

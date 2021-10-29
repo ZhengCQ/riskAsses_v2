@@ -1,7 +1,7 @@
 #!/usr/bin/env  python
 # -*- coding:UTF-8 -*-
 # @Author: Zheng ChenQing
-# @Date: 2019.04.30
+# @Date: 2021.10.18
 # @E-mail: zhengchenqing@qq.com
 
 import sys
@@ -41,7 +41,7 @@ rank_score = {
 	'sequence_feature': 1,
 }
 
-Gscores = json.load(open('../db/Grantham_Scores.json'))
+Gscores = json.load(open('/BIGDATA1/sysuls_yliu_1/linhongzhou/biosoft/riskAsses_v2-master/db/Grantham_Scores.json'))
 
 class HighVar(object):
 	"""docstring for HighVariant"""
@@ -58,6 +58,7 @@ class HighVar(object):
 		self.transcript = ''
 		index = ''
 		max_func = self.func
+		#print(funcLst)
 		for idx, val in enumerate(funcLst):
 			if re.search(r'&',val): # splice_region_variant&intron_variant 存在 &，且不为空值
 				tmpLst = val.split('&') #存在一个& 及多个&的情况
@@ -70,6 +71,8 @@ class HighVar(object):
 			if self.func != max_func:
 				self.func = max_func
 				index = idx	
+				#print(index)
+				#print(self.func)
 		# 根据危害度最大的功能的值，获取相应的其他值
 		self.hgvs_c = self.anno.hgvs_cs[index]
 		self.hgvs_p = self.anno.hgvs_ps[index]
@@ -146,6 +149,7 @@ class FuncRisk(object):
 		grp_dict[grp]['name'] = 【'SYSb6745', 'SYSb6746', 'SYSb6747']
 		"""
 		self.get_grp_info()
+		#查看是否正确获取样本名和idx
 		self.main()
 
 	def get_grp_info(self):
@@ -388,8 +392,8 @@ class FuncRisk(object):
 
 		start = 0
 		end = self.all_sites
-		#if self.fix_sites < self.all_sites:
-		#	start, end = self._jackknifes(self.fix_sites, self.all_sites) # block jackknifes on the set of sites
+		if self.fix_sites < self.all_sites:
+			start, end = self._jackknifes(self.fix_sites, self.all_sites) # block jackknifes on the set of sites
 		vcfinfo = Read.Readvcf(self.invcf).extract #读取到注释vcf的信息
 		samples = Read.Readvcf(self.invcf).samples #读取样本信息
 		num = 0
@@ -402,6 +406,7 @@ class FuncRisk(object):
 		for each in vcfinfo:
 			num +=1
 			if int(num) < int(start) or int(num) > int(end): continue
+
 			high_var = HighVar(each.ann) #遇到多个功能时，取危害度最高的
 			#计算不同catergory的di/dn频率值,并统计每一个功能的在群体及个体间数目
 			## print gtinfo, high_var.func, high_var.hgvs_p, 'CCT', A_fi_mut_dict['CCT']['di_alf'],'GCT',B_fi_mut_dict['GCT']['di_alf']
@@ -437,12 +442,12 @@ class FuncRisk(object):
 			### 输出每一条记录数据
 			results = "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}".\
 				format(each.chrom, each.pos, high_var.func, \
-				high_var.hgvs_p, A_fi_mut_dict['CCT']['di_alf'],\
-				B_fi_mut_dict['GCT']['di_alf'], A_fi_mut_dict['CCT']['di_type'],\
-				B_fi_mut_dict['GCT']['di_type'],missense_score,\
-				A_fi_mut_dict['CCT']['ref_hom'],B_fi_mut_dict['GCT']['ref_hom'],\
-				A_fi_mut_dict['CCT']['mut_hom'],B_fi_mut_dict['GCT']['mut_hom'],\
-				A_fi_mut_dict['CCT']['mut_het'],B_fi_mut_dict['GCT']['mut_het'])
+				high_var.hgvs_p, A_fi_mut_dict[self.A]['di_alf'],\
+				B_fi_mut_dict[self.B]['di_alf'], A_fi_mut_dict[self.A]['di_type'],\
+				B_fi_mut_dict[self.B]['di_type'],missense_score,\
+				A_fi_mut_dict[self.A]['ref_hom'],B_fi_mut_dict[self.B]['ref_hom'],\
+				A_fi_mut_dict[self.A]['mut_hom'],B_fi_mut_dict[self.B]['mut_hom'],\
+				A_fi_mut_dict[self.A]['mut_het'],B_fi_mut_dict[self.B]['mut_het'])
 			
 			results_lst = results.split('\t') + each.gt.split('|')
 			derived_freq_fi.write("\t".join(results_lst) + '\n')
