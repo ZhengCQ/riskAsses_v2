@@ -1,0 +1,9 @@
+python ../riskAsses.py -v testAnno1000.vcf.gz\
+        -A CCT \
+        -B GCT \
+        -A_samples CCT_4libs,AB00001802,SYSb6745,SYSb6746,SYSb6747,CCT02,CCT03,CCT04,SYSb008268 \
+        -B_samples GCT_AB0000353,GCT_AB0001004,GCT_AB0001103,GCT_AB0002974,GCT_AB0002978,SYSb6743,SYSb6744,SYSb6748,GCT_4libs,GCT001,GCT002,GCT003,GCT004,GCT005,GCT006,GCT007,GCT008,GCT009,GCT010,SYSb008269\
+        -C_samples HF001,HF005,HF008 \
+        --n_core 20 \
+        --n_permutation 1 \
+        -w test4
