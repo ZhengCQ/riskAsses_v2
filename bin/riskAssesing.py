@@ -6,6 +6,7 @@
 
 import sys
 import re
+import os
 import random
 import json
 import multiprocessing as mp
@@ -41,8 +42,10 @@ rank_score = {
 	'sequence_feature': 1,
 }
 
-Gscores = json.load(open('/BIGDATA1/sysuls_yliu_1/linhongzhou/biosoft/riskAsses_v2-master/db/Grantham_Scores.json'))
+#Gscores = json.load(open('/BIGDATA1/sysuls_yliu_1/linhongzhou/biosoft/riskAsses_v2-master/db/Grantham_Scores.json'))
 
+current_dir = os.path.abspath(os.path.dirname(__file__))
+Gscores = json.load(open('{}/../db/Grantham_Scores.json'.format(current_dir)))
 class HighVar(object):
 	"""docstring for HighVariant"""
 	def __init__(self, anno):

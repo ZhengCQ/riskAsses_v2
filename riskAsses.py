@@ -1,13 +1,12 @@
 #!/usr/bin/env  python
 # -*- coding:UTF-8 -*-
 # @Author: Zheng ChenQing
-# @Date: 2021.10.18
+# @Date: 2019.04.30,2021.10.18,2021.10.29
 # @E-mail: zhengchenqing@qq.com
 
 
-
 import argparse
-import sys
+from genericpath import exists
 import os
 from bin.riskAssesing import *
 import time
@@ -35,6 +34,9 @@ ARGS.add_argument(
     '--fixlength', dest='fixlength', type=int, 
     help='随机刀切时，刀切的固定长度, 数值大于总位点数时候，用总位点数')
 ARGS.add_argument(
+    '--allsites', dest='allsites', type=int, 
+    help='所有的位点数，如不输人则自行计算')
+ARGS.add_argument(
     '--A_samples_num', dest='A_samples_num', type=int, 
     help='A组随机样本数, 默认不随机，num大于或等于实际样本数时，按照A组实际样本输入')
 ARGS.add_argument(
@@ -54,7 +56,7 @@ def get_all_sites(vcf, work_dir):
 		os.system("vcftools --vcf %s --out %s/vcfstat"%(vcf, work_dir))
 	f = open ('%s/vcfstat.log'%(work_dir),'r')
 	all_sites = re.findall(r'possible (\d+) Sites', f.read())[0] #用findall,不用search
-	os.system('rm ./vcfstat.log')
+	#os.system('rm ./vcfstat.log')
 	return all_sites
 
 def write_table(func_dict, outfile):
@@ -104,11 +106,26 @@ def main():
 	A_samples_lst = args.A_samples.split(',')
 	B_samples_lst = args.B_samples.split(',')
 	C_samples_lst = args.C_samples.split(',')
-	#all_sites = int(os.popen("less -S %s |wc -l" % (args.vcf)).read())
-	all_sites = get_all_sites(args.vcf, args.work_dir)
-	#all_sites = int(68775)
-	fix_sites = int(args.fixlength) if args.fixlength else all_sites/2
-	if all_sites -1000 > fix_sites:
+	if not args.allsites:
+		if not os.path.exists(f'{args.work_dir}/allsites_num.txt'):
+			try:
+			    all_sites = get_all_sites(args.vcf, args.work_dir)
+			except:
+			    all_sites = int(os.popen("zless -S %s |wc -l" % (args.vcf)).read())
+			else:
+				
+			#		    
+			outf_site = open(f'{args.work_dir}/allsites_num.txt','w')
+			outf_site.write(str(all_sites))
+			outf_site.close()
+		else:
+			all_sites = [i.strip() for i in  open(f'{args.work_dir}/allsites_num.txt','r')][0]
+	else:
+		all_sites = args.allsites
+
+	all_sites = int(all_sites)
+	fix_sites = int(args.fixlength) if args.fixlength else all_sites
+	if all_sites - 1000 > fix_sites:
 		print ('There are %s sites, cut %s sites to analysis'%(all_sites, fix_sites))
 	else:
 		print ('There are %s sites, cut %s sites great than all sites, and turn off cut'%(all_sites, fix_sites))
